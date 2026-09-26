@@ -20,6 +20,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
+import org.yaml.snakeyaml.Yaml
 
 @RunWith(AndroidJUnit4::class)
 class BackupManagerTest {
@@ -75,6 +76,34 @@ class BackupManagerTest {
         assertEquals(activeTask, restoredComments.single().taskId)
         assertTrue(restoredComments.single().struck)
         assertFalse(restoredComments.single().isDeleted)
+    }
+
+    @Test
+    fun restoreLegacyTaskNotes_addsDescriptionAndFixedCommentAsComments() = runBlocking {
+        val projectId = db.projectDao().insert(project("legacy-project"))
+        val taskId = db.taskDao().insert(task("legacy-task", projectId))
+        db.taskCommentDao().insert(comment("existing-comment", taskId))
+
+        val manager = BackupManager(YamlistRepository(db))
+        val output = ByteArrayOutputStream()
+        manager.createBackup(output)
+        val archive = manager.inspect(ByteArrayInputStream(output.toByteArray())).second
+            ?: error("Backup inspection did not return an archive")
+
+        // Model the two task fields present in a pre-v0.5 projects.yaml.
+        val yaml = Yaml()
+        val root = yaml.load<MutableMap<String, Any?>>(archive.projectsYaml)
+        @Suppress("UNCHECKED_CAST")
+        val taskMap = (root["tasks"] as List<MutableMap<String, Any?>>).single()
+        taskMap["description"] = "旧説明"
+        taskMap["fixedComment"] = "旧固定メモ"
+
+        manager.restore(archive.copy(projectsYaml = yaml.dump(root)))
+
+        val comments = db.taskCommentDao().getAllOnce()
+        assertEquals(3, comments.size)
+        assertEquals(setOf("existing-comment", "旧説明", "旧固定メモ"), comments.map { it.body }.toSet())
+        assertTrue(comments.all { it.taskId == taskId })
     }
 
     private fun project(uuid: String) = ProjectEntity(

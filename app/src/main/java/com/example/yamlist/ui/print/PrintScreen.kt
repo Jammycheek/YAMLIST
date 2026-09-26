@@ -4,6 +4,8 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -34,7 +36,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.yamlist.R
 import com.example.yamlist.data.file.pdf.ChecklistPdfGenerator
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun PrintScreen(
     onBack: () -> Unit,
@@ -87,7 +89,11 @@ fun PrintScreen(
 
             Text(stringResource(R.string.done_style), style = MaterialTheme.typography.labelLarge,
                 modifier = Modifier.padding(top = 8.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
                 ChecklistPdfGenerator.DoneStyle.entries.forEach { style ->
                     FilterChip(
                         selected = options.doneStyle == style,
