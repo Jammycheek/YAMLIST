@@ -60,7 +60,6 @@
     <string name="add_task">Add task</string>
     <string name="edit_task">Edit task</string>
     <string name="title">Title</string>
-    <string name="fixed_comment">Fixed note</string>
     <string name="weight">Weight</string>
     <string name="weight_range">Weight must be 0 or greater</string>
     <string name="planned_month">Planned month (YYYY-MM)</string>
@@ -103,7 +102,7 @@
     <string name="print">Print</string>
     <string name="print_preview">PDF checklist</string>
     <string name="include_done">Include done tasks</string>
-    <string name="include_comments">Include notes</string>
+    <string name="include_comments">Include comments</string>
     <string name="include_weight">Include weight</string>
     <string name="include_due">Include due date</string>
     <string name="include_number">Include hierarchy number</string>
@@ -158,4 +157,29 @@
     <string name="delete_promoting_children">Delete this task only (keep children, promote one level)</string>
     <string name="promote_children_title">Delete this task only?</string>
     <string name="promote_children_body">Its children will move up one level and stay in the project, in the same order.</string>
+    <!-- v0.5: archive list, project groups, task colors, YAML input helper -->
+    <string name="archive_list">Archived projects</string>
+    <string name="archive_empty">No archived projects.</string>
+    <string name="unarchive">Restore to list</string>
+    <string name="delete_project_fmt">Delete "%1$s"?</string>
+    <string name="new_group">New group</string>
+    <string name="rename_group">Rename group</string>
+    <string name="delete_group">Delete group</string>
+    <string name="delete_group_body_fmt">Delete group "%1$s"? Its projects are kept and become ungrouped.</string>
+    <string name="group_name">Group name</string>
+    <string name="move_to_group">Move to group</string>
+    <string name="no_group">No group</string>
+    <string name="clear_mark">Clear mark</string>
+    <string name="mark_none">None</string>
+    <string name="color_default_black">Black (default)</string>
+    <string name="color_red">Red</string>
+    <string name="color_orange">Orange</string>
+    <string name="color_yellow">Yellow</string>
+    <string name="color_green">Green</string>
+    <string name="color_blue">Blue</string>
+    <string name="color_purple">Purple</string>
+    <string name="color_gray">Gray</string>
+    <string name="yaml_helper_double_space">Double space</string>
+    <string name="yaml_helper_colon">Colon :</string>
+    <string name="yaml_helper_hyphen">Hyphen -</string>
 </resources>

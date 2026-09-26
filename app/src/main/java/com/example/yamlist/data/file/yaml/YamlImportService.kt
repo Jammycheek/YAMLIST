@@ -1,6 +1,7 @@
 package com.example.yamlist.data.file.yaml
 
 import com.example.yamlist.data.local.entity.ProjectEntity
+import com.example.yamlist.data.local.entity.TaskCommentEntity
 import com.example.yamlist.data.local.entity.TaskEntity
 import com.example.yamlist.data.repository.YamlistRepository
 import com.example.yamlist.domain.model.MarkType
@@ -40,6 +41,7 @@ class YamlImportService @Inject constructor(
         val projectEntity = ProjectEntity(
             id = existing?.id ?: 0,
             uuid = projectUuid,
+            groupId = existing?.groupId,
             title = parsed.title,
             description = parsed.description,
             colorCode = parsed.color,
@@ -81,8 +83,6 @@ class YamlImportService @Inject constructor(
                 projectId = projectId,
                 parentTaskId = parentId,
                 title = pt.title,
-                description = pt.description,
-                fixedComment = pt.comment,
                 status = pt.status.name,
                 weight = pt.weight,
                 markType = pt.mark.takeIf { it != MarkType.NONE }?.name,
@@ -97,6 +97,19 @@ class YamlImportService @Inject constructor(
                 updatedAt = now,
             )
             val newId = repo.tasks.insert(entity)
+            if (pt.comments.isNotEmpty()) {
+                repo.comments.insertAll(
+                    pt.comments.map { body ->
+                        TaskCommentEntity(
+                            uuid = UUID.randomUUID().toString(),
+                            taskId = newId,
+                            body = body,
+                            createdAt = now,
+                            updatedAt = now,
+                        )
+                    }
+                )
+            }
             pt.children.forEachIndexed { i, child -> insertTask(child, newId, i) }
         }
         parsed.tasks.forEachIndexed { i, task -> insertTask(task, null, i) }

@@ -83,7 +83,10 @@ class YamlViewModel @Inject constructor(
             val project = repo.getProjectOnce(id) ?: return@launch
             val tasks = repo.observeTasks(id).first()
             val forest = TaskTreeBuilder.build(tasks)
-            _state.update { it.copy(exportText = YamlExporter.export(project, forest)) }
+            val comments = repo.activeCommentsForProject(id)
+            _state.update {
+                it.copy(exportText = YamlExporter.export(project, forest, commentsByTask = comments))
+            }
         }
     }
 

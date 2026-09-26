@@ -43,18 +43,28 @@ class ChecklistPdfGenerator {
         val title: String,
         val depth: Int,
         val done: Boolean,
-        val note: String?,      // fixed comment shown under the row
+        val note: String?,      // task comments shown under the row
         val meta: String?,      // weight / due date suffix
         val isHeading: Boolean, // parent (has children)
     )
 
-    fun generate(project: Project, tasks: List<com.example.yamlist.domain.model.Task>, options: Options, out: OutputStream) {
+    fun generate(
+        project: Project,
+        tasks: List<com.example.yamlist.domain.model.Task>,
+        commentsByTask: Map<Long, List<String>>,
+        options: Options,
+        out: OutputStream,
+    ) {
         val forest = TaskTreeBuilder.build(tasks)
-        val lines = buildLines(forest, options)
+        val lines = buildLines(forest, commentsByTask, options)
         renderPdf(project, lines, options, out)
     }
 
-    private fun buildLines(forest: List<TaskNode>, o: Options): List<Line> {
+    private fun buildLines(
+        forest: List<TaskNode>,
+        commentsByTask: Map<Long, List<String>>,
+        o: Options,
+    ): List<Line> {
         val out = ArrayList<Line>()
         fun walk(node: TaskNode, prefix: String, index: Int, depth: Int) {
             val number = if (prefix.isEmpty()) "${index + 1}" else "$prefix.${index + 1}"
@@ -73,7 +83,9 @@ class ChecklistPdfGenerator {
                         title = t.title,
                         depth = depth,
                         done = done,
-                        note = if (o.includeComments) t.fixedComment?.takeIf { it.isNotBlank() } else null,
+                        note = if (o.includeComments) {
+                            commentsByTask[t.id]?.takeIf { it.isNotEmpty() }?.joinToString(" / ")
+                        } else null,
                         meta = meta,
                         isHeading = isHeading,
                     )

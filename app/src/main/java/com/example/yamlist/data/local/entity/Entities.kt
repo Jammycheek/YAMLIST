@@ -8,16 +8,41 @@ import androidx.room.PrimaryKey
 import java.time.LocalDate
 import java.time.LocalDateTime
 
+/** A collapsible bucket on the project list. Deleting a group un-groups its projects. */
+@Entity(
+    tableName = "project_groups",
+    indices = [Index(value = ["uuid"], unique = true)],
+)
+data class ProjectGroupEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val uuid: String,
+    val title: String,
+    val displayOrder: Long = 0,
+    val isCollapsed: Boolean = false,
+    val createdAt: LocalDateTime,
+    val updatedAt: LocalDateTime,
+)
+
 @Entity(
     tableName = "projects",
+    foreignKeys = [
+        ForeignKey(
+            entity = ProjectGroupEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["groupId"],
+            onDelete = ForeignKey.SET_NULL,
+        ),
+    ],
     indices = [
         Index(value = ["uuid"], unique = true),
         Index(value = ["isDeleted", "isArchived"]),
+        Index(value = ["groupId"]),
     ],
 )
 data class ProjectEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val uuid: String,
+    val groupId: Long? = null,
     val title: String,
     val description: String? = null,
     val colorCode: String? = null,
@@ -61,8 +86,6 @@ data class TaskEntity(
     val projectId: Long,
     val parentTaskId: Long? = null,
     val title: String,
-    val description: String? = null,
-    val fixedComment: String? = null,
     val status: String = "TODO",
     val weight: Double = 1.0,
     val markType: String? = null,

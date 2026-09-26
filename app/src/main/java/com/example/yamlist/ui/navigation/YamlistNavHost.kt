@@ -11,6 +11,7 @@ import com.example.yamlist.ui.backup.BackupScreen
 import com.example.yamlist.ui.bulkchild.BulkChildCreateScreen
 import com.example.yamlist.ui.history.HistoryScreen
 import com.example.yamlist.ui.movetask.MoveTaskScreen
+import com.example.yamlist.ui.project.ArchiveScreen
 import com.example.yamlist.ui.project.ProjectEditScreen
 import com.example.yamlist.ui.project.ProjectListScreen
 import com.example.yamlist.ui.print.PrintScreen
@@ -33,6 +34,7 @@ object Routes {
     const val HISTORY = "history"
     const val BACKUP = "backup"
     const val SETTINGS = "settings"
+    const val ARCHIVE = "archive"
 }
 
 @Composable
@@ -48,6 +50,14 @@ fun YamlistNavHost(navController: NavHostController = rememberNavController()) {
                 onOpenBackup = { navController.navigate(Routes.BACKUP) },
                 onOpenSettings = { navController.navigate(Routes.SETTINGS) },
                 onOpenHistory = { navController.navigate(Routes.HISTORY) },
+                onOpenArchive = { navController.navigate(Routes.ARCHIVE) },
+            )
+        }
+
+        composable(Routes.ARCHIVE) {
+            ArchiveScreen(
+                onBack = { navController.popBackStack() },
+                onOpenProject = { id -> navController.navigate("${Routes.TASKS}/$id") },
             )
         }
 

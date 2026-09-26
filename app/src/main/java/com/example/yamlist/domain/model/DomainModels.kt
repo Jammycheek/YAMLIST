@@ -69,9 +69,18 @@ enum class TaskSortMode {
  * Domain project. Mirrors the persistence entity but carries no Android/Room types
  * so it can be unit-tested on the plain JVM.
  */
+data class ProjectGroup(
+    val id: Long = 0,
+    val uuid: String,
+    val title: String,
+    val displayOrder: Long = 0,
+    val isCollapsed: Boolean = false,
+)
+
 data class Project(
     val id: Long = 0,
     val uuid: String,
+    val groupId: Long? = null,
     val title: String,
     val description: String? = null,
     val colorCode: String? = null,
@@ -97,8 +106,6 @@ data class Task(
     val projectId: Long,
     val parentTaskId: Long? = null,
     val title: String,
-    val description: String? = null,
-    val fixedComment: String? = null,
     val status: TaskStatus = TaskStatus.TODO,
     val weight: Double = 1.0,
     val markType: MarkType = MarkType.NONE,

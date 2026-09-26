@@ -52,11 +52,12 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.yamlist.R
+import com.example.yamlist.domain.model.MarkType
 import com.example.yamlist.domain.model.ParentDisplayState
 import com.example.yamlist.domain.model.ProgressMode
 import com.example.yamlist.domain.model.TaskStatus
-import com.example.yamlist.ui.common.ColorBar
 import com.example.yamlist.ui.common.MarkChip
+import com.example.yamlist.ui.common.NumberColorBadge
 import com.example.yamlist.ui.common.ProgressBar
 import kotlinx.coroutines.launch
 
@@ -136,6 +137,8 @@ fun TaskTreeScreen(
                         onMoveUp = { viewModel.moveSiblingUp(row.node.task.id) },
                         onMoveDown = { viewModel.moveSiblingDown(row.node.task.id) },
                         onEdit = { onEditTask(row.node.task.id) },
+                        onSetColor = { key -> viewModel.setColor(row.node.task.id, key) },
+                        onClearMark = { viewModel.clearMark(row.node.task.id) },
                         onBulk = { status -> viewModel.setSubtreeStatus(row.node.task.id, status) },
                         onDelete = {
                             scope.launch {
@@ -257,6 +260,8 @@ private fun TaskRow(
     onMoveUp: () -> Unit,
     onMoveDown: () -> Unit,
     onEdit: () -> Unit,
+    onSetColor: (String?) -> Unit,
+    onClearMark: () -> Unit,
     onBulk: (TaskStatus) -> Unit,
     onDelete: () -> Unit,
     onDeletePromotingChildren: () -> Unit,
@@ -273,9 +278,6 @@ private fun TaskRow(
             .padding(start = indent, end = 8.dp, top = 6.dp, bottom = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        ColorBar(task.colorCode)
-        Spacer(Modifier.width(6.dp))
-
         // Expand arrow only where there is something to open; leaves keep the
         // same gap so every checkbox in a level stays vertically aligned.
         if (row.isLeaf) {
@@ -286,6 +288,13 @@ private fun TaskRow(
                     if (row.expanded) Icons.Default.KeyboardArrowDown else Icons.AutoMirrored.Filled.KeyboardArrowRight,
                     contentDescription = stringResource(R.string.expand_collapse),
                 )
+            }
+        }
+
+        // Fixed-width slot so checkboxes stay aligned whether or not a task has comments.
+        Box(Modifier.width(20.dp), contentAlignment = Alignment.Center) {
+            if (row.hasComments) {
+                Text("💬", style = MaterialTheme.typography.labelMedium)
             }
         }
 
@@ -310,22 +319,16 @@ private fun TaskRow(
 
         Column(Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                MarkChip(task.markType)
-                if (row.hasComments) {
-                    Text(
-                        "💬",
-                        style = MaterialTheme.typography.labelMedium,
-                        modifier = Modifier.padding(end = 4.dp),
-                    )
-                }
                 if (row.localNumber.isNotEmpty()) {
-                    Text(
-                        row.localNumber,
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    NumberColorBadge(
+                        number = row.localNumber,
+                        colorKey = task.colorCode,
+                        onClick = onOpen,
+                        onSelectColor = onSetColor,
                         modifier = Modifier.padding(end = 6.dp),
                     )
                 }
+                MarkChip(task.markType)
                 Text(
                     task.title,
                     style = MaterialTheme.typography.bodyLarge,
@@ -354,10 +357,6 @@ private fun TaskRow(
                     if (isNotEmpty()) append("　")
                     append(it.toString())
                 }
-                if (!task.fixedComment.isNullOrBlank()) {
-                    if (isNotEmpty()) append("　")
-                    append("💬")
-                }
             }
             if (sub.isNotBlank()) {
                 Text(sub, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
@@ -381,6 +380,10 @@ private fun TaskRow(
                     onClick = { menu = false; onMove() })
                 DropdownMenuItem(text = { Text(stringResource(R.string.edit)) },
                     onClick = { menu = false; onEdit() })
+                if (task.markType != MarkType.NONE) {
+                    DropdownMenuItem(text = { Text(stringResource(R.string.clear_mark)) },
+                        onClick = { menu = false; onClearMark() })
+                }
                 if (!row.isLeaf) {
                     DropdownMenuItem(text = { Text(stringResource(R.string.mark_all_done)) },
                         onClick = { menu = false; onBulk(TaskStatus.DONE) })

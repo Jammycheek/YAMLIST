@@ -48,9 +48,10 @@ class PrintViewModel @Inject constructor(
             try {
                 val project = _project.value ?: return@launch
                 val tasks = repo.observeTasks(projectId).first()
+                val comments = repo.activeCommentsForProject(projectId)
                 withContext(Dispatchers.IO) {
                     openStream()?.use { out ->
-                        generator.generate(project, tasks, _options.value, out)
+                        generator.generate(project, tasks, comments, _options.value, out)
                     } ?: return@withContext
                 }
                 _message.value = "PDFを保存しました。"

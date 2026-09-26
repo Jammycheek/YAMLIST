@@ -4,6 +4,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.yamlist.data.repository.YamlistRepository
+import com.example.yamlist.domain.model.MarkType
 import com.example.yamlist.domain.model.ParentDisplayState
 import com.example.yamlist.domain.model.Project
 import com.example.yamlist.domain.model.TaskNode
@@ -176,6 +177,11 @@ class TaskTreeViewModel @Inject constructor(
     }
 
     fun toggleDone(taskId: Long) = viewModelScope.launch { repo.toggleDone(taskId) }
+
+    fun setColor(taskId: Long, colorKey: String?) =
+        viewModelScope.launch { repo.setTaskColor(taskId, colorKey) }
+
+    fun clearMark(taskId: Long) = viewModelScope.launch { repo.setTaskMark(taskId, MarkType.NONE) }
 
     /**
      * Checkbox action for a parent row: ticking it completes the whole subtree,

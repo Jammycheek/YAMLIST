@@ -36,7 +36,6 @@ data class BulkChildUiState(
     val dueDate: String = "",
     val status: TaskStatus = TaskStatus.TODO,
     val isProgressTarget: Boolean = true,
-    val fixedComment: String = "",
     val titles: List<String> = emptyList(),
     val problems: List<BulkTitleParser.Problem> = emptyList(),
     val weightError: Boolean = false,
@@ -85,7 +84,6 @@ class BulkChildCreateViewModel @Inject constructor(
     fun onDueDate(text: String) = _state.update { it.copy(dueDate = text) }
     fun onStatus(status: TaskStatus) = _state.update { it.copy(status = status) }
     fun onProgressTarget(value: Boolean) = _state.update { it.copy(isProgressTarget = value) }
-    fun onFixedComment(text: String) = _state.update { it.copy(fixedComment = text) }
     fun clearMessage() = _state.update { it.copy(message = null) }
 
     private fun reparse(s: BulkChildUiState): BulkChildUiState {
@@ -111,7 +109,6 @@ class BulkChildCreateViewModel @Inject constructor(
                     projectId = s.projectId,
                     parentTaskId = s.parentId,
                     title = "",
-                    fixedComment = s.fixedComment.ifBlank { null },
                     status = s.status,
                     weight = s.weightText.trim().toDoubleOrNull() ?: 1.0,
                     markType = s.markType,

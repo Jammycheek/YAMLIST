@@ -156,8 +156,7 @@ object YamlImporter {
         return ParsedTask(
             uuid = uuid,
             title = title,
-            description = map["description"] as? String,
-            comment = map["comment"] as? String,
+            comments = parseComments(map, here, errors),
             status = status,
             weight = weight,
             mark = mark,
@@ -169,6 +168,28 @@ object YamlImporter {
             order = order,
             children = children,
         )
+    }
+
+    /**
+     * `comments:` (list of strings) plus the pre-v0.5 single-string `description` /
+     * `comment` keys, which no longer exist as task fields and are kept as comments.
+     */
+    private fun parseComments(map: Map<*, *>, path: String, errors: MutableList<YamlError>): List<String> {
+        val legacy = listOf("description", "comment").mapNotNull { key -> scalarText(map[key]) }
+        val listed = when (val raw = map["comments"]) {
+            null -> emptyList()
+            is List<*> -> raw.mapNotNull { scalarText(it) }
+            else -> scalarText(raw)?.let { listOf(it) } ?: run {
+                errors.add(YamlError(path, "comments は文字列のリストである必要があります。"))
+                emptyList()
+            }
+        }
+        return legacy + listed
+    }
+
+    private fun scalarText(value: Any?): String? = when (value) {
+        is String, is Number, is Boolean -> value.toString().trim().takeIf { it.isNotEmpty() }
+        else -> null
     }
 
     private fun parseOrder(value: Any?, path: String, errors: MutableList<YamlError>): Long? {

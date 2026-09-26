@@ -22,8 +22,6 @@ data class TaskEditState(
     val taskId: Long = -1,
     val parentId: Long? = null,
     val title: String = "",
-    val description: String = "",
-    val fixedComment: String = "",
     val weightText: String = "1.0",
     val mark: MarkType = MarkType.NONE,
     val colorCode: String? = null,
@@ -61,8 +59,7 @@ class TaskEditViewModel @Inject constructor(
                 repo.getTask(taskId)?.let { t ->
                     _state.value = TaskEditState(
                         projectId = t.projectId, taskId = t.id, parentId = t.parentTaskId,
-                        title = t.title, description = t.description.orEmpty(),
-                        fixedComment = t.fixedComment.orEmpty(),
+                        title = t.title,
                         weightText = trimWeight(t.weight), mark = t.markType, colorCode = t.colorCode,
                         plannedMonth = t.plannedYearMonth.orEmpty(), dueDate = t.dueDate,
                         status = t.status, isProgressTarget = t.isProgressTarget, loaded = true,
@@ -77,8 +74,6 @@ class TaskEditViewModel @Inject constructor(
     }
 
     fun onTitle(v: String) = _state.update { it.copy(title = v) }
-    fun onDescription(v: String) = _state.update { it.copy(description = v) }
-    fun onComment(v: String) = _state.update { it.copy(fixedComment = v) }
     fun onWeight(v: String) = _state.update { it.copy(weightText = v) }
     fun onMark(v: MarkType) = _state.update { it.copy(mark = v) }
     fun onColor(v: String?) = _state.update { it.copy(colorCode = v) }
@@ -102,8 +97,6 @@ class TaskEditViewModel @Inject constructor(
                         projectId = s.projectId,
                         parentTaskId = s.parentId,
                         title = s.title.trim(),
-                        description = s.description.ifBlank { null },
-                        fixedComment = s.fixedComment.ifBlank { null },
                         status = s.status,
                         weight = weight,
                         markType = s.mark,
@@ -125,8 +118,6 @@ class TaskEditViewModel @Inject constructor(
                 repo.updateTask(
                     existing.copy(
                         title = s.title.trim(),
-                        description = s.description.ifBlank { null },
-                        fixedComment = s.fixedComment.ifBlank { null },
                         status = s.status,
                         weight = weight,
                         markType = s.mark,

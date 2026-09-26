@@ -8,6 +8,7 @@ import androidx.room.Transaction
 import androidx.room.Update
 import com.example.yamlist.data.local.entity.AppSettingEntity
 import com.example.yamlist.data.local.entity.ProjectEntity
+import com.example.yamlist.data.local.entity.ProjectGroupEntity
 import com.example.yamlist.data.local.entity.TaskCommentEntity
 import com.example.yamlist.data.local.entity.TaskEntity
 import kotlinx.coroutines.flow.Flow
@@ -45,7 +46,57 @@ interface ProjectDao {
     @Query("UPDATE projects SET isArchived = :archived, updatedAt = :now WHERE id = :id")
     suspend fun setArchived(id: Long, archived: Boolean, now: java.time.LocalDateTime)
 
+    /** Live, non-archived projects in one group (null = ungrouped), in list order. */
+    @Query(
+        "SELECT * FROM projects WHERE groupId IS :groupId AND isDeleted = 0 AND isArchived = 0 " +
+            "ORDER BY displayOrder ASC, id ASC"
+    )
+    suspend fun getGroupSiblings(groupId: Long?): List<ProjectEntity>
+
+    @Query("SELECT COALESCE(MAX(displayOrder), 0) FROM projects WHERE groupId IS :groupId AND isDeleted = 0")
+    suspend fun maxDisplayOrderInGroup(groupId: Long?): Long
+
+    @Query("UPDATE projects SET displayOrder = :order, updatedAt = :now WHERE id = :id")
+    suspend fun setOrder(id: Long, order: Long, now: java.time.LocalDateTime)
+
+    @Query("UPDATE projects SET groupId = :groupId, displayOrder = :order, updatedAt = :now WHERE id = :id")
+    suspend fun setGroupAndOrder(id: Long, groupId: Long?, order: Long, now: java.time.LocalDateTime)
+
+    @Query("UPDATE projects SET groupId = NULL, updatedAt = :now WHERE groupId = :groupId")
+    suspend fun clearGroup(groupId: Long, now: java.time.LocalDateTime)
+
     @Query("DELETE FROM projects")
+    suspend fun deleteAllHard()
+}
+
+@Dao
+interface ProjectGroupDao {
+
+    @Query("SELECT * FROM project_groups ORDER BY displayOrder ASC, id ASC")
+    fun observeAll(): Flow<List<ProjectGroupEntity>>
+
+    @Query("SELECT * FROM project_groups ORDER BY displayOrder ASC, id ASC")
+    suspend fun getAllOnce(): List<ProjectGroupEntity>
+
+    @Query("SELECT COALESCE(MAX(displayOrder), 0) FROM project_groups")
+    suspend fun maxDisplayOrder(): Long
+
+    @Insert(onConflict = OnConflictStrategy.ABORT)
+    suspend fun insert(group: ProjectGroupEntity): Long
+
+    @Query("UPDATE project_groups SET title = :title, updatedAt = :now WHERE id = :id")
+    suspend fun rename(id: Long, title: String, now: java.time.LocalDateTime)
+
+    @Query("UPDATE project_groups SET isCollapsed = :collapsed WHERE id = :id")
+    suspend fun setCollapsed(id: Long, collapsed: Boolean)
+
+    @Query("UPDATE project_groups SET displayOrder = :order, updatedAt = :now WHERE id = :id")
+    suspend fun setOrder(id: Long, order: Long, now: java.time.LocalDateTime)
+
+    @Query("DELETE FROM project_groups WHERE id = :id")
+    suspend fun delete(id: Long)
+
+    @Query("DELETE FROM project_groups")
     suspend fun deleteAllHard()
 }
 
@@ -106,6 +157,12 @@ interface TaskDao {
 
     @Query("UPDATE tasks SET displayOrder = :order, updatedAt = :now WHERE id = :id")
     suspend fun setOrder(id: Long, order: Long, now: java.time.LocalDateTime)
+
+    @Query("UPDATE tasks SET colorCode = :colorCode, updatedAt = :now WHERE id = :id")
+    suspend fun setColor(id: Long, colorCode: String?, now: java.time.LocalDateTime)
+
+    @Query("UPDATE tasks SET markType = :markType, updatedAt = :now WHERE id = :id")
+    suspend fun setMark(id: Long, markType: String?, now: java.time.LocalDateTime)
 
     /** Used by move-to-a-different-parent and by promote-children-on-delete. */
     @Query(

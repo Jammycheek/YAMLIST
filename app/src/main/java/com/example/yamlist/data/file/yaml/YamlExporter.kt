@@ -27,6 +27,7 @@ object YamlExporter {
         project: Project,
         forest: List<TaskNode>,
         includeOrder: Boolean = false,
+        commentsByTask: Map<Long, List<String>> = emptyMap(),
     ): String {
         val root = linkedMapOf<String, Any?>(
             "schema_version" to YamlImporter.SUPPORTED_SCHEMA_VERSION,
@@ -44,7 +45,7 @@ object YamlExporter {
         project.startDate?.let { projectMap["start_date"] = it.format(DATE) }
         project.dueDate?.let { projectMap["due_date"] = it.format(DATE) }
         if (forest.isNotEmpty()) {
-            projectMap["tasks"] = forest.sortedByOrder().map { taskMap(it, includeOrder) }
+            projectMap["tasks"] = forest.sortedByOrder().map { taskMap(it, includeOrder, commentsByTask) }
         }
 
         root["project"] = projectMap
@@ -55,14 +56,16 @@ object YamlExporter {
     private fun List<TaskNode>.sortedByOrder(): List<TaskNode> =
         sortedWith(compareBy({ it.task.displayOrder }, { it.task.id }))
 
-    private fun taskMap(node: TaskNode, includeOrder: Boolean): Map<String, Any?> {
+    private fun taskMap(
+        node: TaskNode,
+        includeOrder: Boolean,
+        commentsByTask: Map<Long, List<String>>,
+    ): Map<String, Any?> {
         val t = node.task
         val map = linkedMapOf<String, Any?>()
         t.uuid.takeIf { it.isNotBlank() }?.let { map["uuid"] = it }
         map["title"] = t.title
         if (includeOrder) map["order"] = t.displayOrder
-        t.description?.takeIf { it.isNotBlank() }?.let { map["description"] = it }
-        t.fixedComment?.takeIf { it.isNotBlank() }?.let { map["comment"] = it }
         if (t.status != TaskStatus.TODO) map["status"] = t.status.name.lowercase()
         if (t.weight != 1.0) map["weight"] = t.weight
         if (t.markType != MarkType.NONE) map["mark"] = t.markType.name.lowercase()
@@ -73,8 +76,9 @@ object YamlExporter {
         t.dueDate?.let { map["due_date"] = it.format(DATE) }
         t.completedAt?.let { map["completed_at"] = it.format(DATETIME) }
         if (!t.isProgressTarget) map["progress_target"] = false
+        commentsByTask[t.id]?.takeIf { it.isNotEmpty() }?.let { map["comments"] = it }
         if (node.children.isNotEmpty()) {
-            map["tasks"] = node.children.sortedByOrder().map { taskMap(it, includeOrder) }
+            map["tasks"] = node.children.sortedByOrder().map { taskMap(it, includeOrder, commentsByTask) }
         }
         return map
     }

@@ -24,8 +24,8 @@ data class ParsedProject(
 data class ParsedTask(
     val uuid: String?,
     val title: String,
-    val description: String?,
-    val comment: String?,
+    /** Imported as task comments. Legacy `description` / `comment` keys land here too. */
+    val comments: List<String> = emptyList(),
     val status: TaskStatus,
     val weight: Double,
     val mark: MarkType,

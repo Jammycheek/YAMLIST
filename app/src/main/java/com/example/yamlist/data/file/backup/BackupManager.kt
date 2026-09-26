@@ -2,6 +2,7 @@ package com.example.yamlist.data.file.backup
 
 import com.example.yamlist.data.local.entity.AppSettingEntity
 import com.example.yamlist.data.local.entity.ProjectEntity
+import com.example.yamlist.data.local.entity.ProjectGroupEntity
 import com.example.yamlist.data.local.entity.TaskCommentEntity
 import com.example.yamlist.data.local.entity.TaskEntity
 import com.example.yamlist.data.repository.YamlistRepository
@@ -16,6 +17,7 @@ import java.security.MessageDigest
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
+import java.util.UUID
 import java.util.zip.ZipEntry
 import java.util.zip.ZipInputStream
 import java.util.zip.ZipOutputStream
@@ -26,7 +28,7 @@ import javax.inject.Inject
  *
  * Archive layout (spec §17.1):
  *   manifest.json   – format/app version, timestamp, counts, sha-256 checksum
- *   projects.yaml   – projects + tasks with ids preserved (restore source of truth)
+ *   projects.yaml   – groups + projects + tasks with ids preserved (restore source of truth)
  *   comments.json   – task comments
  *   settings.json   – app settings
  *
@@ -41,7 +43,7 @@ class BackupManager @Inject constructor(
 
     companion object {
         const val BACKUP_FORMAT_VERSION = 1
-        const val APP_VERSION = "0.4"
+        const val APP_VERSION = "0.5"
         const val FILE_MANIFEST = "manifest.json"
         const val FILE_PROJECTS = "projects.yaml"
         const val FILE_COMMENTS = "comments.json"
@@ -63,18 +65,20 @@ class BackupManager @Inject constructor(
     @Serializable data class CommentDto(
         val id: Long, val uuid: String, val taskId: Long, val body: String,
         val createdAt: String, val updatedAt: String, val isDeleted: Boolean,
+        val struck: Boolean = false,
     )
     @Serializable data class SettingDto(val key: String, val value: String)
 
     // ---- Create --------------------------------------------------------------
 
     suspend fun createBackup(out: OutputStream) {
+        val groups = repo.projectGroups.getAllOnce()
         val projects = repo.projects.getAllOnce()
         val allTasks = projects.flatMap { repo.tasks.getByProject(it.id) }
         val comments = repo.comments.getAllOnce()
         val settings = repo.settingDao.getAllOnce()
 
-        val projectsYaml = dumpProjectsYaml(projects, allTasks)
+        val projectsYaml = dumpProjectsYaml(groups, projects, allTasks)
         val commentsJson = json.encodeToString(comments.map { it.toDto() })
         val settingsJson = json.encodeToString(settings.map { SettingDto(it.key, it.value) })
 
@@ -127,20 +131,31 @@ class BackupManager @Inject constructor(
 
     /** Full-replace restore inside a transaction (spec §17.3). */
     suspend fun restore(archive: ParsedArchive) {
-        val (projects, tasks) = parseProjectsYaml(archive.projectsYaml)
+        val parsed = parseProjectsYaml(archive.projectsYaml)
         val comments = json.decodeFromString<List<CommentDto>>(archive.commentsJson)
         val settings = json.decodeFromString<List<SettingDto>>(archive.settingsJson)
+        val restoredAt = LocalDateTime.now()
+        val legacyComments = parsed.legacyNotes.map { (taskId, body) ->
+            TaskCommentEntity(
+                uuid = UUID.randomUUID().toString(), taskId = taskId, body = body,
+                createdAt = restoredAt, updatedAt = restoredAt,
+            )
+        }
 
         repo.withTransaction {
             // Delete existing only inside the transaction; a failure rolls this back.
             repo.comments.deleteAllHard()
             repo.tasks.deleteAllHard()
             repo.projects.deleteAllHard()
+            repo.projectGroups.deleteAllHard()
             repo.settingDao.deleteAllHard()
 
-            projects.forEach { repo.projects.insert(it) }
-            tasks.forEach { repo.tasks.insert(it) }
+            parsed.groups.forEach { repo.projectGroups.insert(it) }
+            parsed.projects.forEach { repo.projects.insert(it) }
+            parsed.tasks.forEach { repo.tasks.insert(it) }
             repo.comments.insertAll(comments.map { it.toEntity() })
+            // After the id-preserving rows, so auto-generated ids can't collide with them.
+            repo.comments.insertAll(legacyComments)
             repo.settingDao.putAll(settings.map { AppSettingEntity(it.key, it.value) })
         }
     }
@@ -177,9 +192,14 @@ class BackupManager @Inject constructor(
 
     // ---- projects.yaml (entity-faithful with ids) ----------------------------
 
-    private fun dumpProjectsYaml(projects: List<ProjectEntity>, tasks: List<TaskEntity>): String {
+    private fun dumpProjectsYaml(
+        groups: List<ProjectGroupEntity>,
+        projects: List<ProjectEntity>,
+        tasks: List<TaskEntity>,
+    ): String {
         val root = linkedMapOf<String, Any?>(
             "backup_format_version" to BACKUP_FORMAT_VERSION,
+            "groups" to groups.map { groupToMap(it) },
             "projects" to projects.map { projectToMap(it) },
             "tasks" to tasks.map { taskToMap(it) },
         )
@@ -191,15 +211,54 @@ class BackupManager @Inject constructor(
         return Yaml(options).dump(root)
     }
 
-    private fun parseProjectsYaml(text: String): Pair<List<ProjectEntity>, List<TaskEntity>> {
-        val root = Yaml().load<Map<String, Any?>>(text) ?: return emptyList<ProjectEntity>() to emptyList()
-        val projects = (root["projects"] as? List<*>).orEmpty().mapNotNull { mapToProject(it as? Map<*, *>) }
-        val tasks = (root["tasks"] as? List<*>).orEmpty().mapNotNull { mapToTask(it as? Map<*, *>) }
-        return projects to tasks
+    private data class ParsedProjects(
+        val groups: List<ProjectGroupEntity>,
+        val projects: List<ProjectEntity>,
+        val tasks: List<TaskEntity>,
+        /** (taskId, text) from pre-v0.5 task description/fixedComment, restored as comments. */
+        val legacyNotes: List<Pair<Long, String>>,
+    )
+
+    private fun parseProjectsYaml(text: String): ParsedProjects {
+        val root = Yaml().load<Map<String, Any?>>(text)
+            ?: return ParsedProjects(emptyList(), emptyList(), emptyList(), emptyList())
+        val groups = (root["groups"] as? List<*>).orEmpty().mapNotNull { mapToGroup(it as? Map<*, *>) }
+        val groupIds = groups.map { it.id }.toSet()
+        val projects = (root["projects"] as? List<*>).orEmpty()
+            .mapNotNull { mapToProject(it as? Map<*, *>) }
+            .map { if (it.groupId != null && it.groupId !in groupIds) it.copy(groupId = null) else it }
+        val taskMaps = (root["tasks"] as? List<*>).orEmpty().mapNotNull { it as? Map<*, *> }
+        val tasks = taskMaps.mapNotNull { mapToTask(it) }
+        val legacyNotes = taskMaps.flatMap { m ->
+            val id = (m["id"] as? Number)?.toLong() ?: return@flatMap emptyList()
+            listOf("description", "fixedComment")
+                .mapNotNull { key -> (m[key] as? String)?.trim()?.takeIf { it.isNotEmpty() } }
+                .map { id to it }
+        }
+        return ParsedProjects(groups, projects, tasks, legacyNotes)
+    }
+
+    private fun groupToMap(g: ProjectGroupEntity) = linkedMapOf<String, Any?>(
+        "id" to g.id, "uuid" to g.uuid, "title" to g.title, "displayOrder" to g.displayOrder,
+        "isCollapsed" to g.isCollapsed,
+        "createdAt" to g.createdAt.toString(), "updatedAt" to g.updatedAt.toString(),
+    )
+
+    private fun mapToGroup(m: Map<*, *>?): ProjectGroupEntity? {
+        m ?: return null
+        return ProjectGroupEntity(
+            id = (m["id"] as Number).toLong(),
+            uuid = m["uuid"] as String,
+            title = m["title"] as String,
+            displayOrder = (m["displayOrder"] as? Number)?.toLong() ?: 0,
+            isCollapsed = m["isCollapsed"] as? Boolean ?: false,
+            createdAt = dateTimeOrNull(m["createdAt"]) ?: LocalDateTime.now(),
+            updatedAt = dateTimeOrNull(m["updatedAt"]) ?: LocalDateTime.now(),
+        )
     }
 
     private fun projectToMap(p: ProjectEntity) = linkedMapOf<String, Any?>(
-        "id" to p.id, "uuid" to p.uuid, "title" to p.title, "description" to p.description,
+        "id" to p.id, "uuid" to p.uuid, "groupId" to p.groupId, "title" to p.title, "description" to p.description,
         "colorCode" to p.colorCode, "progressMode" to p.progressMode, "defaultSortMode" to p.defaultSortMode,
         "startDate" to p.startDate?.toString(), "dueDate" to p.dueDate?.toString(),
         "completedAt" to p.completedAt?.toString(), "displayOrder" to p.displayOrder,
@@ -209,7 +268,7 @@ class BackupManager @Inject constructor(
 
     private fun taskToMap(t: TaskEntity) = linkedMapOf<String, Any?>(
         "id" to t.id, "uuid" to t.uuid, "projectId" to t.projectId, "parentTaskId" to t.parentTaskId,
-        "title" to t.title, "description" to t.description, "fixedComment" to t.fixedComment,
+        "title" to t.title,
         "status" to t.status, "weight" to t.weight, "markType" to t.markType, "colorCode" to t.colorCode,
         "plannedYearMonth" to t.plannedYearMonth, "dueDate" to t.dueDate?.toString(),
         "completedAt" to t.completedAt?.toString(), "displayOrder" to t.displayOrder,
@@ -222,6 +281,7 @@ class BackupManager @Inject constructor(
         return ProjectEntity(
             id = (m["id"] as Number).toLong(),
             uuid = m["uuid"] as String,
+            groupId = (m["groupId"] as? Number)?.toLong(),
             title = m["title"] as String,
             description = m["description"] as? String,
             colorCode = m["colorCode"] as? String,
@@ -246,8 +306,6 @@ class BackupManager @Inject constructor(
             projectId = (m["projectId"] as Number).toLong(),
             parentTaskId = (m["parentTaskId"] as? Number)?.toLong(),
             title = m["title"] as String,
-            description = m["description"] as? String,
-            fixedComment = m["fixedComment"] as? String,
             status = (m["status"] as? String) ?: "TODO",
             weight = (m["weight"] as? Number)?.toDouble() ?: 1.0,
             markType = m["markType"] as? String,
@@ -280,6 +338,12 @@ class BackupManager @Inject constructor(
     private fun sha256(bytes: ByteArray): String =
         MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }
 
-    private fun TaskCommentEntity.toDto() = CommentDto(id, uuid, taskId, body, createdAt.toString(), updatedAt.toString(), isDeleted)
-    private fun CommentDto.toEntity() = TaskCommentEntity(id, uuid, taskId, body, LocalDateTime.parse(createdAt), LocalDateTime.parse(updatedAt), isDeleted)
+    private fun TaskCommentEntity.toDto() =
+        CommentDto(id, uuid, taskId, body, createdAt.toString(), updatedAt.toString(), isDeleted, struck)
+
+    private fun CommentDto.toEntity() = TaskCommentEntity(
+        id = id, uuid = uuid, taskId = taskId, body = body,
+        createdAt = LocalDateTime.parse(createdAt), updatedAt = LocalDateTime.parse(updatedAt),
+        struck = struck, isDeleted = isDeleted,
+    )
 }

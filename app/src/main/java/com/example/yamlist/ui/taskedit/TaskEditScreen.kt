@@ -70,18 +70,6 @@ fun TaskEditScreen(
                 modifier = Modifier.fillMaxWidth(),
             )
             OutlinedTextField(
-                value = state.description,
-                onValueChange = viewModel::onDescription,
-                label = { Text(stringResource(R.string.description)) },
-                modifier = Modifier.fillMaxWidth(),
-            )
-            OutlinedTextField(
-                value = state.fixedComment,
-                onValueChange = viewModel::onComment,
-                label = { Text(stringResource(R.string.fixed_comment)) },
-                modifier = Modifier.fillMaxWidth(),
-            )
-            OutlinedTextField(
                 value = state.weightText,
                 onValueChange = viewModel::onWeight,
                 label = { Text(stringResource(R.string.weight)) },
@@ -112,7 +100,12 @@ fun TaskEditScreen(
             }
 
             MarkPickerRow(selected = state.mark, onSelect = viewModel::onMark, label = stringResource(R.string.mark))
-            ColorPickerRow(selectedKey = state.colorCode, onSelect = viewModel::onColor, label = stringResource(R.string.color))
+            ColorPickerRow(
+                selectedKey = state.colorCode,
+                onSelect = viewModel::onColor,
+                label = stringResource(R.string.color),
+                noneIsBlack = true,
+            )
 
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(stringResource(R.string.progress_target), modifier = Modifier.weight(1f))

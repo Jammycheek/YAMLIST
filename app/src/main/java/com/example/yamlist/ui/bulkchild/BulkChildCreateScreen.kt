@@ -146,6 +146,7 @@ fun BulkChildCreateScreen(
                 selectedKey = state.colorKey,
                 onSelect = viewModel::onColor,
                 label = stringResource(R.string.color),
+                noneIsBlack = true,
             )
 
             OutlinedTextField(
@@ -158,12 +159,6 @@ fun BulkChildCreateScreen(
                 value = state.dueDate,
                 onValueChange = viewModel::onDueDate,
                 label = { Text(stringResource(R.string.due_date_input)) },
-                modifier = Modifier.fillMaxWidth(),
-            )
-            OutlinedTextField(
-                value = state.fixedComment,
-                onValueChange = viewModel::onFixedComment,
-                label = { Text(stringResource(R.string.fixed_comment)) },
                 modifier = Modifier.fillMaxWidth(),
             )
 

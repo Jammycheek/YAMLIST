@@ -2,10 +2,12 @@ package com.example.yamlist.data.repository
 
 import com.example.yamlist.data.local.YamlistDatabase
 import com.example.yamlist.data.local.withTransactionCompat
-import com.example.yamlist.data.local.entity.ProjectEntity
+import com.example.yamlist.data.local.entity.ProjectGroupEntity
 import com.example.yamlist.data.local.entity.TaskCommentEntity
 import com.example.yamlist.data.local.entity.TaskEntity
+import com.example.yamlist.domain.model.MarkType
 import com.example.yamlist.domain.model.Project
+import com.example.yamlist.domain.model.ProjectGroup
 import com.example.yamlist.domain.model.Task
 import com.example.yamlist.domain.model.TaskStatus
 import com.example.yamlist.domain.progress.SiblingReorder
@@ -27,6 +29,7 @@ import javax.inject.Singleton
 class YamlistRepository @Inject constructor(
     private val db: YamlistDatabase,
 ) {
+    private val groupDao = db.projectGroupDao()
     private val projectDao = db.projectDao()
     private val taskDao = db.taskDao()
     private val commentDao = db.taskCommentDao()
@@ -64,6 +67,69 @@ class YamlistRepository @Inject constructor(
 
     suspend fun setProjectArchived(id: Long, archived: Boolean) =
         projectDao.setArchived(id, archived, now())
+
+    /**
+     * Moves a project one step up or down within its own group (ungrouped
+     * projects form their own level), then re-spaces that level so ties left
+     * by older data can't turn the swap into a no-op.
+     */
+    suspend fun moveProject(projectId: Long, direction: Int) = withTransaction {
+        val project = projectDao.getById(projectId) ?: return@withTransaction
+        val siblings = projectDao.getGroupSiblings(project.groupId).map { it.id }
+        val (from, to) = SiblingReorder.swapIndices(siblings, projectId, direction)
+            ?: return@withTransaction
+        val reordered = siblings.toMutableList().apply { add(to, removeAt(from)) }
+        val timestamp = now()
+        TaskOrdering.renumber(reordered).forEach { (id, order) ->
+            projectDao.setOrder(id, order, timestamp)
+        }
+    }
+
+    /** Puts a project at the end of [groupId] (null = ungrouped). */
+    suspend fun moveProjectToGroup(projectId: Long, groupId: Long?) = withTransaction {
+        val order = projectDao.maxDisplayOrderInGroup(groupId) + TaskOrdering.STEP
+        projectDao.setGroupAndOrder(projectId, groupId, order, now())
+    }
+
+    // ---- Project groups -----------------------------------------------------
+
+    fun observeProjectGroups(): Flow<List<ProjectGroup>> =
+        groupDao.observeAll().map { list -> list.map { it.toDomain() } }
+
+    suspend fun createProjectGroup(title: String): Long {
+        val timestamp = now()
+        return groupDao.insert(
+            ProjectGroupEntity(
+                uuid = newUuid(),
+                title = title,
+                displayOrder = groupDao.maxDisplayOrder() + TaskOrdering.STEP,
+                createdAt = timestamp,
+                updatedAt = timestamp,
+            )
+        )
+    }
+
+    suspend fun renameProjectGroup(id: Long, title: String) = groupDao.rename(id, title, now())
+
+    suspend fun setProjectGroupCollapsed(id: Long, collapsed: Boolean) =
+        groupDao.setCollapsed(id, collapsed)
+
+    suspend fun moveProjectGroup(groupId: Long, direction: Int) = withTransaction {
+        val ids = groupDao.getAllOnce().map { it.id }
+        val (from, to) = SiblingReorder.swapIndices(ids, groupId, direction)
+            ?: return@withTransaction
+        val reordered = ids.toMutableList().apply { add(to, removeAt(from)) }
+        val timestamp = now()
+        TaskOrdering.renumber(reordered).forEach { (id, order) ->
+            groupDao.setOrder(id, order, timestamp)
+        }
+    }
+
+    /** Deletes the group only; its projects (archived ones included) become ungrouped. */
+    suspend fun deleteProjectGroup(groupId: Long) = withTransaction {
+        projectDao.clearGroup(groupId, now())
+        groupDao.delete(groupId)
+    }
 
     // ---- Tasks ---------------------------------------------------------------
 
@@ -256,6 +322,12 @@ class YamlistRepository @Inject constructor(
 
     suspend fun moveTask(taskId: Long, newOrder: Long) = taskDao.setOrder(taskId, newOrder, now())
 
+    suspend fun setTaskColor(taskId: Long, colorKey: String?) =
+        taskDao.setColor(taskId, colorKey, now())
+
+    suspend fun setTaskMark(taskId: Long, mark: MarkType) =
+        taskDao.setMark(taskId, mark.takeIf { it != MarkType.NONE }?.name, now())
+
     // ---- Comments ------------------------------------------------------------
 
     fun observeComments(taskId: Long): Flow<List<TaskCommentEntity>> =
@@ -275,6 +347,15 @@ class YamlistRepository @Inject constructor(
 
     suspend fun deleteComment(commentId: Long) = commentDao.softDelete(commentId)
 
+    /** Live, not-struck comment bodies per task of one project, oldest first. */
+    suspend fun activeCommentsForProject(projectId: Long): Map<Long, List<String>> {
+        val taskIds = taskDao.getByProject(projectId).map { it.id }.toSet()
+        return commentDao.getAllOnce()
+            .filter { it.taskId in taskIds && !it.struck }
+            .sortedBy { it.createdAt }
+            .groupBy({ it.taskId }, { it.body })
+    }
+
     /** Task id -> live comment count, for the tree's "has comments" mark. */
     fun observeCommentCounts(): Flow<Map<Long, Int>> =
         commentDao.observeCommentCounts().map { rows -> rows.associate { it.taskId to it.count } }
@@ -289,6 +370,7 @@ class YamlistRepository @Inject constructor(
     suspend fun <R> withTransaction(block: suspend () -> R): R = db.withTransactionCompat(block)
 
     // Direct entity access for import/backup which manage their own IDs/UUIDs.
+    val projectGroups get() = groupDao
     val projects get() = projectDao
     val tasks get() = taskDao
     val comments get() = commentDao

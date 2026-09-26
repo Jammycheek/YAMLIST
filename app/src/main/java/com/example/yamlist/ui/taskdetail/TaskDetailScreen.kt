@@ -72,10 +72,6 @@ fun TaskDetailScreen(
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             FieldRow(stringResource(R.string.status), statusLabel(task.status))
-            task.description?.takeIf { it.isNotBlank() }
-                ?.let { FieldRow(stringResource(R.string.description), it) }
-            task.fixedComment?.takeIf { it.isNotBlank() }
-                ?.let { FieldRow(stringResource(R.string.fixed_comment), it) }
             if (task.isProgressTarget) FieldRow(stringResource(R.string.weight), trimWeight(task.weight))
             if (task.markType.glyph.isNotBlank()) FieldRow(stringResource(R.string.mark), task.markType.glyph)
             task.plannedYearMonth?.let { FieldRow(stringResource(R.string.planned_month), it) }
