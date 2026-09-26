@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Auto Backup rules (Android 11 and below). The Room DB is included so that
+    device-transfer restores carry the user's projects. The app's own manual
+    ZIP backup (SCR-09) is the primary, portable mechanism.
+-->
+<full-backup-content>
+    <include domain="database" path="nest_progress.db" />
+    <include domain="sharedpref" path="locale_prefs.xml" />
+</full-backup-content>

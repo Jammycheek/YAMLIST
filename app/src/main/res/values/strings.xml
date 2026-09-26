@@ -1,0 +1,161 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Nest Progress</string>
+
+    <!-- Common -->
+    <string name="save">Save</string>
+    <string name="cancel">Cancel</string>
+    <string name="back">Back</string>
+    <string name="edit">Edit</string>
+    <string name="delete">Delete</string>
+    <string name="archive">Archive</string>
+    <string name="copy">Copy</string>
+    <string name="menu">Menu</string>
+
+    <!-- Top-level menu / navigation -->
+    <string name="yaml_io">YAML import / export</string>
+    <string name="history">Completed history</string>
+    <string name="backup_restore">Backup &amp; restore</string>
+    <string name="settings">Settings</string>
+
+    <!-- Project list (SCR-01) -->
+    <string name="new_project">New project</string>
+    <string name="no_progress_target">No progress target</string>
+    <string name="weight_progress_fmt">Weight %1$d%%</string>
+    <string name="count_progress_fmt">%1$d / %2$d</string>
+    <string name="due_fmt">Due: %1$s</string>
+    <string name="marks_fmt">★%1$d ?%2$d</string>
+
+    <!-- Project edit (SCR-05) -->
+    <string name="edit_project">Edit project</string>
+    <string name="project_name">Project name</string>
+    <string name="description">Description</string>
+    <string name="progress_mode">Progress mode</string>
+    <string name="color">Color</string>
+    <string name="title_required">Title is required</string>
+    <string name="mode_count">Count</string>
+    <string name="mode_weight">Weight</string>
+    <string name="mode_both">Both</string>
+
+    <!-- Task tree (SCR-02) -->
+    <string name="add_root_task">Add task</string>
+    <string name="add_child_task">Add child task</string>
+    <string name="mark_all_done">Mark all done</string>
+    <string name="mark_all_todo">Mark all to-do</string>
+    <string name="mark_all_hold">Mark all on hold</string>
+    <string name="delete_with_children_fmt">Delete this task and %1$d descendant task(s)?</string>
+    <string name="depth_warning">Nesting is deep. Consider flattening for readability.</string>
+    <string name="expand_collapse">Expand / collapse</string>
+    <string name="weight_fmt">w%1$s</string>
+    <string name="state_not_started">Not started</string>
+    <string name="state_in_progress">In progress</string>
+    <string name="state_done">Done</string>
+
+    <!-- Status labels -->
+    <string name="status_todo">To-do</string>
+    <string name="status_done">Done</string>
+    <string name="status_hold">On hold</string>
+
+    <!-- Task edit (SCR-04) -->
+    <string name="add_task">Add task</string>
+    <string name="edit_task">Edit task</string>
+    <string name="title">Title</string>
+    <string name="fixed_comment">Fixed note</string>
+    <string name="weight">Weight</string>
+    <string name="weight_range">Weight must be 0 or greater</string>
+    <string name="planned_month">Planned month (YYYY-MM)</string>
+    <string name="status">Status</string>
+    <string name="mark">Mark</string>
+    <string name="progress_target">Count toward progress</string>
+
+    <!-- Task detail (SCR-03) -->
+    <string name="child_tasks">Child tasks</string>
+    <string name="comments">Comments</string>
+    <string name="add_comment">Add comment</string>
+    <string name="mark_todo">Mark to-do</string>
+    <string name="mark_done">Mark done</string>
+    <string name="due_date">Due date</string>
+    <string name="completed_at">Completed at</string>
+    <string name="created_at">Created at</string>
+    <string name="updated_at">Updated at</string>
+
+    <!-- YAML (SCR-06) -->
+    <string name="yaml_input">Import</string>
+    <string name="yaml_output">Export</string>
+    <string name="open_file">Open file</string>
+    <string name="load_sample">Load sample</string>
+    <string name="load_structure_sample">Structure sample</string>
+    <string name="structure_import_hint">Both formats work: the full schema (schema_version/project), or a plain nested outline of names. An outline imports the hierarchy only — weight and status are set afterwards in the app.</string>
+    <string name="paste_yaml">Paste YAML here</string>
+    <string name="validate">Validate</string>
+    <string name="errors">Errors</string>
+    <string name="preview">Preview</string>
+    <string name="preview_summary_fmt">%1$s — %2$d tasks, max depth %3$d</string>
+    <string name="import_mode">Import mode</string>
+    <string name="do_import">Import</string>
+    <string name="import_new">New</string>
+    <string name="import_upsert">UUID upsert</string>
+    <string name="import_duplicate">Duplicate</string>
+    <string name="export_yaml">Export YAML</string>
+    <string name="save_file">Save file</string>
+
+    <!-- Print / PDF (SCR-07) -->
+    <string name="print">Print</string>
+    <string name="print_preview">PDF checklist</string>
+    <string name="include_done">Include done tasks</string>
+    <string name="include_comments">Include notes</string>
+    <string name="include_weight">Include weight</string>
+    <string name="include_due">Include due date</string>
+    <string name="include_number">Include hierarchy number</string>
+    <string name="orientation">Orientation</string>
+    <string name="a4_portrait">A4 portrait</string>
+    <string name="a4_landscape">A4 landscape</string>
+    <string name="done_style">Done style</string>
+    <string name="done_checked">Checked box</string>
+    <string name="done_strike">Strikethrough</string>
+    <string name="done_text">Status text</string>
+    <string name="done_same">Same as to-do</string>
+    <string name="generate_pdf">Generate PDF</string>
+
+    <!-- Backup / restore (SCR-09) -->
+    <string name="create_backup">Create backup</string>
+    <string name="restore_backup">Restore backup</string>
+    <string name="restore_note">Restore fully replaces current data. It runs in a transaction and rolls back on failure.</string>
+    <string name="restore_confirm_title">Restore backup?</string>
+    <string name="restore_confirm_fmt">Created: %1$s\nProjects: %2$d, Tasks: %3$d\n\nThis replaces all current data.</string>
+    <string name="restore_replace">Replace</string>
+
+    <!-- Settings -->
+    <string name="language">Language</string>
+    <string name="lang_system">System default</string>
+    <string name="lang_japanese">日本語</string>
+    <string name="lang_english">English</string>
+    <!-- Bulk child creation (SCR-10) -->
+    <string name="bulk_add_children">Add children in bulk</string>
+    <string name="bulk_parent_fmt">Parent: %1$s</string>
+    <string name="bulk_titles_label">Titles (one per line)</string>
+    <string name="bulk_titles_hint">Each line becomes one child task. Blank lines are ignored.</string>
+    <string name="bulk_strip_bullets">Strip leading "- " and "・"</string>
+    <string name="bulk_shared_attributes">Shared attributes (applied to all)</string>
+    <string name="bulk_preview_fmt">To create: %1$d</string>
+    <string name="bulk_create_fmt">Create %1$d task(s)</string>
+    <string name="bulk_error_empty">No valid title lines.</string>
+    <string name="bulk_error_too_long_fmt">Line %1$d exceeds %2$d characters.</string>
+    <string name="bulk_error_too_many_fmt">Up to %1$d children can be created at once (%2$d entered). Use YAML import for larger batches.</string>
+    <string name="due_date_input">Due date (YYYY-MM-DD)</string>
+    <!-- Tree expansion controls -->
+    <string name="expand_all">Expand all</string>
+    <string name="collapse_all">Collapse all</string>
+    <string name="expand_one_level">+1 level</string>
+    <string name="collapse_one_level">-1 level</string>
+    <!-- Reorder / move / promote-children / comments (v0.4) -->
+    <string name="move_up">Move up</string>
+    <string name="move_down">Move down</string>
+    <string name="move_to_other_parent">Move to another parent</string>
+    <string name="move_task_title">Move task</string>
+    <string name="move_task_subject_fmt">Moving: %1$s</string>
+    <string name="move_to_root">Project root (no parent)</string>
+    <string name="delete_promoting_children">Delete this task only (keep children, promote one level)</string>
+    <string name="promote_children_title">Delete this task only?</string>
+    <string name="promote_children_body">Its children will move up one level and stay in the project, in the same order.</string>
+</resources>
