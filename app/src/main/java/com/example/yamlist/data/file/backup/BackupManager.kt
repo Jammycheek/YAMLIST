@@ -6,6 +6,7 @@ import com.example.yamlist.data.local.entity.ProjectGroupEntity
 import com.example.yamlist.data.local.entity.TaskCommentEntity
 import com.example.yamlist.data.local.entity.TaskEntity
 import com.example.yamlist.data.repository.YamlistRepository
+import com.example.yamlist.domain.progress.ParentFirstOrder
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -133,7 +134,11 @@ class BackupManager @Inject constructor(
     /** Full-replace restore inside a transaction (spec §17.3). */
     suspend fun restore(archive: ParsedArchive) {
         val parsed = parseProjectsYaml(archive.projectsYaml)
+        val restoredTaskIds = parsed.tasks.mapTo(HashSet()) { it.id }
+        // v0.4 archives also carry comments of soft-deleted tasks, whose tasks are not
+        // in projects.yaml; inserting those would break the task foreign key.
         val comments = json.decodeFromString<List<CommentDto>>(archive.commentsJson)
+            .filter { it.taskId in restoredTaskIds }
         val settings = json.decodeFromString<List<SettingDto>>(archive.settingsJson)
         val restoredAt = LocalDateTime.now()
         val legacyComments = parsed.legacyNotes.map { (taskId, body) ->
@@ -229,9 +234,19 @@ class BackupManager @Inject constructor(
             .mapNotNull { mapToProject(it as? Map<*, *>) }
             .map { if (it.groupId != null && it.groupId !in groupIds) it.copy(groupId = null) else it }
         val taskMaps = (root["tasks"] as? List<*>).orEmpty().mapNotNull { it as? Map<*, *> }
-        val tasks = taskMaps.mapNotNull { mapToTask(it) }
+        val projectIds = projects.mapTo(HashSet()) { it.id }
+        // Rows are dumped in id order, but a task moved under a newer parent has a
+        // smaller id than that parent; insert parents first so each parentTaskId
+        // already exists. A task whose parent is missing is restored at the root.
+        val tasks = ParentFirstOrder.sort(
+            taskMaps.mapNotNull { mapToTask(it) }.filter { it.projectId in projectIds },
+            id = { it.id },
+            parentId = { it.parentTaskId },
+        ).map { (task, detached) -> if (detached) task.copy(parentTaskId = null) else task }
+        val restoredTaskIds = tasks.mapTo(HashSet()) { it.id }
         val legacyNotes = taskMaps.flatMap { m ->
-            val id = (m["id"] as? Number)?.toLong() ?: return@flatMap emptyList()
+            val id = (m["id"] as? Number)?.toLong()?.takeIf { it in restoredTaskIds }
+                ?: return@flatMap emptyList()
             listOf("description", "fixedComment")
                 .mapNotNull { key -> (m[key] as? String)?.trim()?.takeIf { it.isNotEmpty() } }
                 .map { id to it }

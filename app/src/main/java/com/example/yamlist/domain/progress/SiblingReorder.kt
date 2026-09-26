@@ -25,4 +25,13 @@ object SiblingReorder {
         if (to !in siblingIds.indices) return null
         return from to to
     }
+
+    /**
+     * [siblingIds] with [id] moved one step in [direction], or null for a no-op.
+     * Callers renumber the whole result, so ties in stored order can't block a move.
+     */
+    fun moved(siblingIds: List<Long>, id: Long, direction: Int): List<Long>? {
+        val (from, to) = swapIndices(siblingIds, id, direction) ?: return null
+        return siblingIds.toMutableList().apply { add(to, removeAt(from)) }
+    }
 }

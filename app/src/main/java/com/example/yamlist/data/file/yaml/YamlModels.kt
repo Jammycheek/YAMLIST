@@ -25,7 +25,7 @@ data class ParsedTask(
     val uuid: String?,
     val title: String,
     /** Imported as task comments. Legacy `description` / `comment` keys land here too. */
-    val comments: List<String> = emptyList(),
+    val comments: List<YamlComment> = emptyList(),
     val status: TaskStatus,
     val weight: Double,
     val mark: MarkType,
@@ -41,6 +41,12 @@ data class ParsedTask(
     fun subtreeCount(): Int = 1 + children.sumOf { it.subtreeCount() }
     fun depth(): Int = 1 + (children.maxOfOrNull { it.depth() } ?: 0)
 }
+
+/**
+ * A task comment in YAML: a plain string, or `{text: ..., struck: true}` for a
+ * struck-through one so export -> import keeps it.
+ */
+data class YamlComment(val text: String, val struck: Boolean = false)
 
 /** A single validation problem. [locator] is a line ref for syntax errors or a
  *  task path ("事前準備 > 図面確認") for semantic errors. */

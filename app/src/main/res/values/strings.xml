@@ -171,7 +171,7 @@
     <string name="no_group">No group</string>
     <string name="clear_mark">Clear mark</string>
     <string name="mark_none">None</string>
-    <string name="color_default_black">Black (default)</string>
+    <string name="color_default">Default</string>
     <string name="color_red">Red</string>
     <string name="color_orange">Orange</string>
     <string name="color_yellow">Yellow</string>

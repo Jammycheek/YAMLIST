@@ -43,7 +43,7 @@ class ChecklistPdfGenerator {
         val title: String,
         val depth: Int,
         val done: Boolean,
-        val note: String?,      // task comments shown under the row
+        val notes: List<String>, // task comments shown under the row, one per line
         val meta: String?,      // weight / due date suffix
         val isHeading: Boolean, // parent (has children)
     )
@@ -83,9 +83,7 @@ class ChecklistPdfGenerator {
                         title = t.title,
                         depth = depth,
                         done = done,
-                        note = if (o.includeComments) {
-                            commentsByTask[t.id]?.takeIf { it.isNotEmpty() }?.joinToString(" / ")
-                        } else null,
+                        notes = if (o.includeComments) commentsByTask[t.id].orEmpty() else emptyList(),
                         meta = meta,
                         isHeading = isHeading,
                     )
@@ -107,6 +105,7 @@ class ChecklistPdfGenerator {
         val indentStep = 18f
         val rowHeight = 26f
         val noteHeight = 22f
+        val noteLineHeight = 14f
 
         val titlePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.BLACK; textSize = 16f; isFakeBoldText = true }
         val subPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.DKGRAY; textSize = 10f }
@@ -142,14 +141,20 @@ class ChecklistPdfGenerator {
         startPage()
 
         for (line in lines) {
-            val needsNote = line.note != null || (!line.isHeading && o.noteLineWidth > 0)
-            val blockHeight = rowHeight + (if (needsNote) noteHeight else 0f)
-            // Page-break guard: keep a row and its note together (§16.3).
-            if (y + blockHeight > pageH - marginBottom) {
+            val x = marginX + line.depth * indentStep
+            val noteX = x + 20
+            // Each comment starts on its own line and wraps at the right margin, so
+            // long or many comments never run off the page.
+            val noteLines = wrapNotes(line.notes, notePaint, pageW - marginX - noteX)
+            val needsNote = noteLines.isNotEmpty() || (!line.isHeading && o.noteLineWidth > 0)
+            val noteBlock = if (noteLines.size > 1) noteHeight + (noteLines.size - 1) * noteLineHeight else noteHeight
+            val blockHeight = rowHeight + (if (needsNote) noteBlock else 0f)
+            // Page-break guard: keep a row and its note together (§16.3). Never break
+            // on an empty page, or an over-tall block would loop onto blank pages.
+            if (y + blockHeight > pageH - marginBottom && y > marginTop + 20) {
                 pdf.finishPage(page)
                 startPage()
             }
-            val x = marginX + line.depth * indentStep
             if (line.isHeading) {
                 val label = listOfNotNull(line.number.ifBlank { null }, line.title).joinToString(" ")
                 canvas.drawText("□ $label", x, y, headingPaint)
@@ -172,15 +177,16 @@ class ChecklistPdfGenerator {
             y += rowHeight
 
             if (needsNote) {
-                val noteX = x + 20
-                if (line.note != null) {
-                    canvas.drawText("備考：${line.note}", noteX, y, notePaint)
+                if (noteLines.isNotEmpty()) {
+                    noteLines.forEachIndexed { i, text ->
+                        canvas.drawText(text, noteX, y + i * noteLineHeight, notePaint)
+                    }
                 } else {
                     canvas.drawText("備考：", noteX, y, notePaint)
                     val lineStartX = noteX + 34
                     canvas.drawLine(lineStartX, y, lineStartX + o.noteLineWidth, y, rulePaint)
                 }
-                y += noteHeight
+                y += noteBlock
             }
         }
 
@@ -189,11 +195,38 @@ class ChecklistPdfGenerator {
         pdf.close()
     }
 
+    /**
+     * "備考：" before the first comment, full-width indent before the others and
+     * before wrapped continuations, capped at [MAX_NOTE_LINES] lines per task.
+     */
+    private fun wrapNotes(notes: List<String>, paint: Paint, maxWidth: Float): List<String> {
+        val out = ArrayList<String>()
+        notes.forEachIndexed { i, note ->
+            var prefix = if (i == 0) NOTE_LABEL else NOTE_INDENT
+            var rest = note.replace('\n', ' ')
+            while (rest.isNotEmpty()) {
+                val fit = paint.breakText(prefix + rest, true, maxWidth, null) - prefix.length
+                var take = fit.coerceIn(1, rest.length)
+                if (take < rest.length && rest[take - 1].isHighSurrogate()) {
+                    take = if (take > 1) take - 1 else take + 1
+                }
+                out.add(prefix + rest.substring(0, take))
+                rest = rest.substring(take)
+                prefix = NOTE_INDENT
+            }
+        }
+        if (out.size <= MAX_NOTE_LINES) return out
+        return out.take(MAX_NOTE_LINES - 1) + (out[MAX_NOTE_LINES - 1] + "…")
+    }
+
     private fun trimNum(d: Double): String =
         if (d % 1.0 == 0.0) d.toLong().toString() else d.toString()
 
     companion object {
         private val DATE = DateTimeFormatter.ofPattern("yyyy/MM/dd")
         private val DATE_JP = DateTimeFormatter.ofPattern("yyyy年M月d日")
+        private const val NOTE_LABEL = "備考："
+        private const val NOTE_INDENT = "　　　"
+        private const val MAX_NOTE_LINES = 12
     }
 }

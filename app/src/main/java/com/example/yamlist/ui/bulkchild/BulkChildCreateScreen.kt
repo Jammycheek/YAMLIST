@@ -146,7 +146,7 @@ fun BulkChildCreateScreen(
                 selectedKey = state.colorKey,
                 onSelect = viewModel::onColor,
                 label = stringResource(R.string.color),
-                noneIsBlack = true,
+                noneAsTextColor = true,
             )
 
             OutlinedTextField(

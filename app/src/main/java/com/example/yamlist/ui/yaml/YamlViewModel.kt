@@ -4,6 +4,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.yamlist.data.file.yaml.ParsedProject
+import com.example.yamlist.data.file.yaml.YamlComment
 import com.example.yamlist.data.file.yaml.YamlError
 import com.example.yamlist.data.file.yaml.YamlExporter
 import com.example.yamlist.data.file.yaml.YamlImportMode
@@ -83,7 +84,8 @@ class YamlViewModel @Inject constructor(
             val project = repo.getProjectOnce(id) ?: return@launch
             val tasks = repo.observeTasks(id).first()
             val forest = TaskTreeBuilder.build(tasks)
-            val comments = repo.activeCommentsForProject(id)
+            val comments = repo.commentsForProject(id)
+                .mapValues { (_, list) -> list.map { YamlComment(it.body, it.struck) } }
             _state.update {
                 it.copy(exportText = YamlExporter.export(project, forest, commentsByTask = comments))
             }

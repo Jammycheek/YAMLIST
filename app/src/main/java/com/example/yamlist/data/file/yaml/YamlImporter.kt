@@ -171,26 +171,67 @@ object YamlImporter {
     }
 
     /**
-     * `comments:` (list of strings) plus the pre-v0.5 single-string `description` /
-     * `comment` keys, which no longer exist as task fields and are kept as comments.
+     * `comments:` (a list, or a single string) plus the pre-v0.5 single-string
+     * `description` / `comment` keys, which no longer exist as task fields and are
+     * kept as comments. Anything that can't be read as text is an error rather
+     * than being dropped silently.
      */
-    private fun parseComments(map: Map<*, *>, path: String, errors: MutableList<YamlError>): List<String> {
-        val legacy = listOf("description", "comment").mapNotNull { key -> scalarText(map[key]) }
-        val listed = when (val raw = map["comments"]) {
+    private fun parseComments(map: Map<*, *>, path: String, errors: MutableList<YamlError>): List<YamlComment> {
+        val out = ArrayList<YamlComment>()
+        for (key in listOf("description", "comment")) {
+            val raw = map[key] ?: continue
+            val text = scalarText(raw)
+            if (text == null && raw !is String) errors.add(YamlError(path, "$key $COMMENT_HINT"))
+            text?.let { out.add(YamlComment(it)) }
+        }
+        val items = when (val raw = map["comments"]) {
             null -> emptyList()
-            is List<*> -> raw.mapNotNull { scalarText(it) }
-            else -> scalarText(raw)?.let { listOf(it) } ?: run {
-                errors.add(YamlError(path, "comments は文字列のリストである必要があります。"))
-                emptyList()
+            is List<*> -> raw
+            else -> listOf(raw)
+        }
+        items.forEachIndexed { i, item ->
+            val comment = commentItem(item)
+            when {
+                comment != null -> if (comment.text.isNotEmpty()) out.add(comment)
+                item == null -> Unit
+                else -> errors.add(YamlError("$path.comments[#${i + 1}]", COMMENT_HINT))
             }
         }
-        return legacy + listed
+        return out
     }
 
+    /**
+     * A string-like scalar, or a `{text:, struck:}` map; null when it's neither.
+     * A blank string yields empty text, which the caller skips without an error.
+     */
+    private fun commentItem(item: Any?): YamlComment? = when (item) {
+        is String -> YamlComment(item.trim())
+        is Map<*, *> -> {
+            val text = scalarText(item["text"])
+            val struck = item["struck"]
+            val onlyKnownKeys = item.keys.all { it == "text" || it == "struck" }
+            if (text == null || !onlyKnownKeys || (struck != null && struck !is Boolean)) null
+            else YamlComment(text, struck as? Boolean ?: false)
+        }
+        else -> scalarText(item)?.let { YamlComment(it) }
+    }
+
+    /**
+     * Text of a scalar, trimmed. Unquoted dates arrive from SnakeYAML as
+     * [java.util.Date] (UTC) and are turned back into their written form.
+     */
     private fun scalarText(value: Any?): String? = when (value) {
-        is String, is Number, is Boolean -> value.toString().trim().takeIf { it.isNotEmpty() }
+        is String -> value.trim().takeIf { it.isNotEmpty() }
+        is Number, is Boolean -> value.toString()
+        is java.util.Date -> value.toInstant().atOffset(java.time.ZoneOffset.UTC).let {
+            if (it.toLocalTime() == java.time.LocalTime.MIDNIGHT) it.toLocalDate().toString()
+            else it.toLocalDateTime().toString()
+        }
         else -> null
     }
+
+    private const val COMMENT_HINT =
+        "コメントは文字列で指定してください（「:」を含む場合は \"...\" で囲んでください）。"
 
     private fun parseOrder(value: Any?, path: String, errors: MutableList<YamlError>): Long? {
         if (value == null) return null

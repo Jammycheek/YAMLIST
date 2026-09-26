@@ -27,15 +27,15 @@ import com.example.yamlist.domain.model.TaskColor
 import com.example.yamlist.ui.theme.TaskColors
 
 /**
- * Color choice row. [noneIsBlack] draws "no color" as the default black used by
- * task numbers; projects keep the neutral empty swatch.
+ * Color choice row. [noneAsTextColor] draws "no color" in the default text color
+ * used by task numbers; projects keep the neutral empty swatch.
  */
 @Composable
 fun ColorPickerRow(
     selectedKey: String?,
     onSelect: (String?) -> Unit,
     label: String,
-    noneIsBlack: Boolean = false,
+    noneAsTextColor: Boolean = false,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Text(label, style = MaterialTheme.typography.labelLarge)
@@ -47,7 +47,7 @@ fun ColorPickerRow(
             TaskColor.entries.forEach { c ->
                 val selected = (selectedKey ?: "none") == c.key
                 val onClick = { onSelect(if (c == TaskColor.NONE) null else c.key) }
-                if (noneIsBlack) {
+                if (noneAsTextColor) {
                     Box(Modifier.clickable(onClick = onClick)) { ColorSwatch(c, selected, size = 28.dp) }
                 } else {
                     Box(

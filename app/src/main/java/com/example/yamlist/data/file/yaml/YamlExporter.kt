@@ -27,7 +27,7 @@ object YamlExporter {
         project: Project,
         forest: List<TaskNode>,
         includeOrder: Boolean = false,
-        commentsByTask: Map<Long, List<String>> = emptyMap(),
+        commentsByTask: Map<Long, List<YamlComment>> = emptyMap(),
     ): String {
         val root = linkedMapOf<String, Any?>(
             "schema_version" to YamlImporter.SUPPORTED_SCHEMA_VERSION,
@@ -59,7 +59,7 @@ object YamlExporter {
     private fun taskMap(
         node: TaskNode,
         includeOrder: Boolean,
-        commentsByTask: Map<Long, List<String>>,
+        commentsByTask: Map<Long, List<YamlComment>>,
     ): Map<String, Any?> {
         val t = node.task
         val map = linkedMapOf<String, Any?>()
@@ -76,7 +76,11 @@ object YamlExporter {
         t.dueDate?.let { map["due_date"] = it.format(DATE) }
         t.completedAt?.let { map["completed_at"] = it.format(DATETIME) }
         if (!t.isProgressTarget) map["progress_target"] = false
-        commentsByTask[t.id]?.takeIf { it.isNotEmpty() }?.let { map["comments"] = it }
+        commentsByTask[t.id]?.takeIf { it.isNotEmpty() }?.let { comments ->
+            map["comments"] = comments.map { c ->
+                if (c.struck) linkedMapOf("text" to c.text, "struck" to true) else c.text
+            }
+        }
         if (node.children.isNotEmpty()) {
             map["tasks"] = node.children.sortedByOrder().map { taskMap(it, includeOrder, commentsByTask) }
         }

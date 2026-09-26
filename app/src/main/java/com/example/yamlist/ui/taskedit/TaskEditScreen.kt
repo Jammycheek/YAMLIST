@@ -104,7 +104,7 @@ fun TaskEditScreen(
                 selectedKey = state.colorCode,
                 onSelect = viewModel::onColor,
                 label = stringResource(R.string.color),
-                noneIsBlack = true,
+                noneAsTextColor = true,
             )
 
             Row(verticalAlignment = Alignment.CenterVertically) {

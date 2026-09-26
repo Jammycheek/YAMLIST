@@ -31,6 +31,10 @@ interface ProjectDao {
     @Query("SELECT * FROM projects WHERE isDeleted = 0")
     suspend fun getAllOnce(): List<ProjectEntity>
 
+    /** Includes soft-deleted rows: they still hold their uuid under the unique index. */
+    @Query("SELECT EXISTS(SELECT 1 FROM projects WHERE uuid = :uuid)")
+    suspend fun uuidExists(uuid: String): Boolean
+
     @Query("SELECT COALESCE(MAX(displayOrder), 0) FROM projects")
     suspend fun maxDisplayOrder(): Long
 
@@ -220,8 +224,13 @@ interface TaskDao {
     )
     suspend fun countDescendants(rootId: Long): Int
 
-    @Query("UPDATE tasks SET isDeleted = 1, updatedAt = :now WHERE projectId = :projectId")
-    suspend fun softDeleteSubtreeAllOfProject(projectId: Long, now: java.time.LocalDateTime)
+    /** Physically removes a project's tasks (comments cascade), freeing their uuids. */
+    @Query("DELETE FROM tasks WHERE projectId = :projectId")
+    suspend fun hardDeleteAllOfProject(projectId: Long)
+
+    /** Includes soft-deleted rows: they still hold their uuid under the unique index. */
+    @Query("SELECT EXISTS(SELECT 1 FROM tasks WHERE uuid = :uuid)")
+    suspend fun uuidExists(uuid: String): Boolean
 
     @Query("DELETE FROM tasks")
     suspend fun deleteAllHard()
@@ -234,6 +243,13 @@ interface TaskCommentDao {
 
     @Query("SELECT * FROM task_comments WHERE isDeleted = 0")
     suspend fun getAllOnce(): List<TaskCommentEntity>
+
+    @Query(
+        "SELECT c.* FROM task_comments c JOIN tasks t ON t.id = c.taskId " +
+            "WHERE t.projectId = :projectId AND t.isDeleted = 0 AND c.isDeleted = 0 " +
+            "ORDER BY c.createdAt ASC, c.id ASC"
+    )
+    suspend fun getLiveForProject(projectId: Long): List<TaskCommentEntity>
 
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insert(comment: TaskCommentEntity): Long

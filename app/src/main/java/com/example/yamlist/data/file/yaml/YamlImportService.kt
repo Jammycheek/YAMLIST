@@ -27,15 +27,18 @@ class YamlImportService @Inject constructor(
     private suspend fun insertProject(parsed: ParsedProject, mode: YamlImportMode): Long {
         val now = LocalDateTime.now()
 
-        val projectUuid = when (mode) {
-            YamlImportMode.NEW -> UUID.randomUUID().toString()
-            YamlImportMode.DUPLICATE -> UUID.randomUUID().toString()
-            YamlImportMode.UUID_UPSERT -> parsed.uuid ?: UUID.randomUUID().toString()
-        }
-
         val existing = if (mode == YamlImportMode.UUID_UPSERT && parsed.uuid != null) {
             repo.projects.getByUuid(parsed.uuid)
         } else null
+
+        // A uuid can still be held by a soft-deleted row under the unique index;
+        // only reuse the YAML's uuid when it's free (or it's the row being updated).
+        val projectUuid = when {
+            existing != null -> existing.uuid
+            mode == YamlImportMode.UUID_UPSERT && parsed.uuid != null &&
+                !repo.projects.uuidExists(parsed.uuid) -> parsed.uuid
+            else -> UUID.randomUUID().toString()
+        }
 
         val displayOrder = repo.projects.maxDisplayOrder() + 1
         val projectEntity = ProjectEntity(
@@ -58,8 +61,9 @@ class YamlImportService @Inject constructor(
 
         val projectId = if (existing != null) {
             repo.projects.update(projectEntity)
-            // Simplest correct upsert for v0.1: replace the whole task tree.
-            repo.tasks.softDeleteSubtreeAllOfProject(existing.id, now)
+            // Replace the whole task tree. The old rows are removed physically (their
+            // comments cascade) so the YAML's task uuids can be inserted again.
+            repo.tasks.hardDeleteAllOfProject(existing.id)
             existing.id
         } else {
             repo.projects.insert(projectEntity)
@@ -76,10 +80,9 @@ class YamlImportService @Inject constructor(
             }
             val entity = TaskEntity(
                 id = 0,
-                uuid = when (mode) {
-                    YamlImportMode.UUID_UPSERT -> pt.uuid ?: UUID.randomUUID().toString()
-                    else -> UUID.randomUUID().toString()
-                },
+                uuid = pt.uuid
+                    ?.takeIf { mode == YamlImportMode.UUID_UPSERT && !repo.tasks.uuidExists(it) }
+                    ?: UUID.randomUUID().toString(),
                 projectId = projectId,
                 parentTaskId = parentId,
                 title = pt.title,
@@ -99,13 +102,14 @@ class YamlImportService @Inject constructor(
             val newId = repo.tasks.insert(entity)
             if (pt.comments.isNotEmpty()) {
                 repo.comments.insertAll(
-                    pt.comments.map { body ->
+                    pt.comments.map { c ->
                         TaskCommentEntity(
                             uuid = UUID.randomUUID().toString(),
                             taskId = newId,
-                            body = body,
+                            body = c.text,
                             createdAt = now,
                             updatedAt = now,
+                            struck = c.struck,
                         )
                     }
                 )

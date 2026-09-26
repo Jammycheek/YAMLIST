@@ -76,9 +76,7 @@ class YamlistRepository @Inject constructor(
     suspend fun moveProject(projectId: Long, direction: Int) = withTransaction {
         val project = projectDao.getById(projectId) ?: return@withTransaction
         val siblings = projectDao.getGroupSiblings(project.groupId).map { it.id }
-        val (from, to) = SiblingReorder.swapIndices(siblings, projectId, direction)
-            ?: return@withTransaction
-        val reordered = siblings.toMutableList().apply { add(to, removeAt(from)) }
+        val reordered = SiblingReorder.moved(siblings, projectId, direction) ?: return@withTransaction
         val timestamp = now()
         TaskOrdering.renumber(reordered).forEach { (id, order) ->
             projectDao.setOrder(id, order, timestamp)
@@ -116,9 +114,7 @@ class YamlistRepository @Inject constructor(
 
     suspend fun moveProjectGroup(groupId: Long, direction: Int) = withTransaction {
         val ids = groupDao.getAllOnce().map { it.id }
-        val (from, to) = SiblingReorder.swapIndices(ids, groupId, direction)
-            ?: return@withTransaction
-        val reordered = ids.toMutableList().apply { add(to, removeAt(from)) }
+        val reordered = SiblingReorder.moved(ids, groupId, direction) ?: return@withTransaction
         val timestamp = now()
         TaskOrdering.renumber(reordered).forEach { (id, order) ->
             groupDao.setOrder(id, order, timestamp)
@@ -304,20 +300,17 @@ class YamlistRepository @Inject constructor(
 
     /**
      * Moves [taskId] one step up or down among its same-level siblings
-     * ([SiblingReorder.UP] / [SiblingReorder.DOWN]) by swapping displayOrder
-     * with the neighbour. A no-op at either end of the level.
+     * ([SiblingReorder.UP] / [SiblingReorder.DOWN]) and re-spaces the level,
+     * so equal stored orders can't turn the move into a no-op.
      */
     suspend fun moveSibling(taskId: Long, direction: Int) = withTransaction {
         val task = taskDao.getById(taskId) ?: return@withTransaction
-        val siblings = taskDao.getSiblings(task.projectId, task.parentTaskId)
-        val swap = SiblingReorder.swapIndices(siblings.map { it.id }, taskId, direction)
-            ?: return@withTransaction
-        val (fromIdx, toIdx) = swap
-        val a = siblings[fromIdx]
-        val b = siblings[toIdx]
+        val siblings = taskDao.getSiblings(task.projectId, task.parentTaskId).map { it.id }
+        val reordered = SiblingReorder.moved(siblings, taskId, direction) ?: return@withTransaction
         val timestamp = now()
-        taskDao.setOrder(a.id, b.displayOrder, timestamp)
-        taskDao.setOrder(b.id, a.displayOrder, timestamp)
+        TaskOrdering.renumber(reordered).forEach { (id, order) ->
+            taskDao.setOrder(id, order, timestamp)
+        }
     }
 
     suspend fun moveTask(taskId: Long, newOrder: Long) = taskDao.setOrder(taskId, newOrder, now())
@@ -347,14 +340,15 @@ class YamlistRepository @Inject constructor(
 
     suspend fun deleteComment(commentId: Long) = commentDao.softDelete(commentId)
 
-    /** Live, not-struck comment bodies per task of one project, oldest first. */
-    suspend fun activeCommentsForProject(projectId: Long): Map<Long, List<String>> {
-        val taskIds = taskDao.getByProject(projectId).map { it.id }.toSet()
-        return commentDao.getAllOnce()
-            .filter { it.taskId in taskIds && !it.struck }
-            .sortedBy { it.createdAt }
-            .groupBy({ it.taskId }, { it.body })
-    }
+    /** Live comments per live task of one project, oldest first, struck ones included. */
+    suspend fun commentsForProject(projectId: Long): Map<Long, List<TaskCommentEntity>> =
+        commentDao.getLiveForProject(projectId).groupBy { it.taskId }
+
+    /** Bodies of live, not-struck comments per task, for printing. */
+    suspend fun activeCommentsForProject(projectId: Long): Map<Long, List<String>> =
+        commentsForProject(projectId)
+            .mapValues { (_, list) -> list.filterNot { it.struck }.map { it.body } }
+            .filterValues { it.isNotEmpty() }
 
     /** Task id -> live comment count, for the tree's "has comments" mark. */
     fun observeCommentCounts(): Flow<Map<Long, Int>> =

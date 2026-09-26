@@ -106,6 +106,48 @@ class BackupManagerTest {
         assertTrue(comments.all { it.taskId == taskId })
     }
 
+    @Test
+    fun restoreV04Archive_dropsCommentsWhoseTaskIsNotInTheArchive() = runBlocking {
+        val projectId = db.projectDao().insert(project("p"))
+        val taskId = db.taskDao().insert(task("t", projectId))
+        db.taskCommentDao().insert(comment("kept", taskId))
+
+        val manager = BackupManager(YamlistRepository(db))
+        val output = ByteArrayOutputStream()
+        manager.createBackup(output)
+        val archive = manager.inspect(ByteArrayInputStream(output.toByteArray())).second
+            ?: error("Backup inspection did not return an archive")
+
+        // v0.4 wrote comments of soft-deleted tasks too; their tasks are absent.
+        val orphan = """{"id":999,"uuid":"orphan","taskId":4242,"body":"orphan",""" +
+            """"createdAt":"2025-01-01T00:00","updatedAt":"2025-01-01T00:00","isDeleted":false}"""
+        val commentsJson = archive.commentsJson.trim().removeSuffix("]").trimEnd() +
+            (if (archive.commentsJson.contains("{")) "," else "") + orphan + "]"
+
+        manager.restore(archive.copy(commentsJson = commentsJson))
+
+        assertEquals(listOf("kept"), db.taskCommentDao().getAllOnce().map { it.body })
+    }
+
+    @Test
+    fun restore_childListedBeforeItsNewerParent_keepsTheHierarchy() = runBlocking {
+        val projectId = db.projectDao().insert(project("p"))
+        val child = db.taskDao().insert(task("child", projectId))
+        val parent = db.taskDao().insert(task("parent", projectId))
+        // Moving an older task under a newer one puts the child first in id order.
+        db.taskDao().setParentAndOrder(child, parent, 1000, timestamp)
+
+        val manager = BackupManager(YamlistRepository(db))
+        val output = ByteArrayOutputStream()
+        manager.createBackup(output)
+        val archive = manager.inspect(ByteArrayInputStream(output.toByteArray())).second
+            ?: error("Backup inspection did not return an archive")
+
+        manager.restore(archive)
+
+        assertEquals(parent, db.taskDao().getById(child)!!.parentTaskId)
+    }
+
     private fun project(uuid: String) = ProjectEntity(
         uuid = uuid, title = uuid, createdAt = timestamp, updatedAt = timestamp,
     )

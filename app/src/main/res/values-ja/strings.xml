@@ -171,7 +171,7 @@
     <string name="no_group">グループなし</string>
     <string name="clear_mark">マークを解除</string>
     <string name="mark_none">なし</string>
-    <string name="color_default_black">黒（標準）</string>
+    <string name="color_default">標準</string>
     <string name="color_red">赤</string>
     <string name="color_orange">オレンジ</string>
     <string name="color_yellow">黄</string>

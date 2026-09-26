@@ -110,14 +110,17 @@ fun NumberColorBadge(
     }
 }
 
-/** Swatch for a task color; "none" is drawn as the default black. */
+/** Swatch for a task color; "none" is drawn in the default text color (black on the light theme). */
 @Composable
 fun ColorSwatch(color: TaskColor, selected: Boolean, size: Dp = 20.dp) {
     Box(
         Modifier
             .size(size)
             .clip(CircleShape)
-            .background(if (color == TaskColor.NONE) Color.Black else TaskColors.forKey(color.key))
+            .background(
+                if (color == TaskColor.NONE) MaterialTheme.colorScheme.onSurface
+                else TaskColors.forKey(color.key)
+            )
             .border(
                 width = if (selected) 3.dp else 1.dp,
                 color = if (selected) MaterialTheme.colorScheme.primary else Color.Gray,
@@ -129,7 +132,7 @@ fun ColorSwatch(color: TaskColor, selected: Boolean, size: Dp = 20.dp) {
 @Composable
 fun taskColorLabel(color: TaskColor): String = stringResource(
     when (color) {
-        TaskColor.NONE -> R.string.color_default_black
+        TaskColor.NONE -> R.string.color_default
         TaskColor.RED -> R.string.color_red
         TaskColor.ORANGE -> R.string.color_orange
         TaskColor.YELLOW -> R.string.color_yellow
