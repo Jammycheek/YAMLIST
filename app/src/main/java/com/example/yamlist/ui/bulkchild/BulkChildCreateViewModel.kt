@@ -120,7 +120,7 @@ class BulkChildCreateViewModel @Inject constructor(
                     weight = s.weightText.trim().toDoubleOrNull() ?: 1.0,
                     markType = s.markType,
                     colorCode = s.colorKey,
-                    plannedYearMonth = s.plannedMonth.ifBlank { null },
+                    plannedYearMonth = s.plannedMonth.trim().ifBlank { null },
                     dueDate = parseDateOrNull(s.dueDate),
                     isProgressTarget = s.isProgressTarget,
                     createdAt = stamp,

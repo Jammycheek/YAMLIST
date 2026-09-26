@@ -94,6 +94,19 @@ class TaskDaoTest {
     }
 
     @Test
+    fun completedTaskLeavesHistoryWhenItGainsAChild() = runBlocking {
+        val projectId = db.projectDao().insert(project())
+        val formerLeaf = db.taskDao().insert(
+            task("former-leaf", projectId, null).copy(status = "DONE", completedAt = t0)
+        )
+        assertEquals(listOf("former-leaf"), db.taskDao().observeCompletedHistory().first().map { it.title })
+
+        db.taskDao().insert(task("child", projectId, formerLeaf))
+
+        assertTrue(db.taskDao().observeCompletedHistory().first().isEmpty())
+    }
+
+    @Test
     fun parentWithoutProgressTargetsCanBeMarkedDoneAndUndone() = runBlocking {
         val projectId = db.projectDao().insert(project())
         val root = db.taskDao().insert(task("root", projectId, null))
@@ -133,6 +146,7 @@ class TaskDaoTest {
         withTimeout(5000) { viewModel.state.first { it.projectId == projectId } }
         viewModel.onInputText("child")
         viewModel.onStatus(TaskStatus.DONE)
+        viewModel.onPlannedMonth("2026-09  ")
         val saved = CompletableDeferred<Unit>()
 
         viewModel.save { saved.complete(Unit) }
@@ -141,6 +155,7 @@ class TaskDaoTest {
         val child = db.taskDao().getByProject(projectId).single { it.parentTaskId == root }
         assertEquals("DONE", child.status)
         assertTrue(child.completedAt != null)
+        assertEquals("2026-09", child.plannedYearMonth)
     }
 
     @Test

@@ -151,7 +151,9 @@ interface TaskDao {
     @Query(
         "SELECT t.* FROM tasks t JOIN projects p ON p.id = t.projectId " +
             "WHERE t.status = 'DONE' AND t.isDeleted = 0 AND p.isDeleted = 0 " +
-            "AND t.completedAt IS NOT NULL ORDER BY t.completedAt DESC"
+            "AND t.completedAt IS NOT NULL " +
+            "AND NOT EXISTS (SELECT 1 FROM tasks child WHERE child.parentTaskId = t.id AND child.isDeleted = 0) " +
+            "ORDER BY t.completedAt DESC"
     )
     fun observeCompletedHistory(): Flow<List<TaskEntity>>
 

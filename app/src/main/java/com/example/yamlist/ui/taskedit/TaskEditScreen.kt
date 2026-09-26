@@ -84,6 +84,10 @@ fun TaskEditScreen(
                 onValueChange = viewModel::onPlannedMonth,
                 label = { Text(stringResource(R.string.planned_month)) },
                 placeholder = { Text("2026-08") },
+                isError = state.plannedMonthError,
+                supportingText = {
+                    if (state.plannedMonthError) Text(stringResource(R.string.invalid_planned_month))
+                },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
             )

@@ -37,7 +37,9 @@ data class TaskEditState(
         val w = weightText.trim().ifBlank { "1.0" }.toDoubleOrNull() ?: return true
         return !w.isFinite() || w < 0.0 || w > 9999.0
     }
-    val canSave: Boolean get() = !titleError && !weightError
+    val plannedMonthError: Boolean get() = plannedMonth.isNotBlank() &&
+        runCatching { java.time.YearMonth.parse(plannedMonth.trim()) }.isFailure
+    val canSave: Boolean get() = !titleError && !weightError && !plannedMonthError
 }
 
 @HiltViewModel
