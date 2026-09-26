@@ -1,4 +1,4 @@
-# ネスト型進捗管理アプリ (Nest Progress) — v0.3
+# ネスト型進捗管理アプリ (YAMLIST) — v0.3
 
 設計仕様書 v0.1 ＋ 追加仕様（子タスク連続作成・階層内優先順位）の実装。
 ローカル完結・オフライン動作の Android アプリ。
@@ -14,6 +14,7 @@
 | v0.2 | YAML 構造記法インポート（`StructureYamlConverter`）を追加 |
 | v0.3 | 子タスク連続作成（SCR-10）、階層内優先順位・1000刻み自動採番、階層番号の動的生成、YAML `order` キー対応、ツリー一括展開/折りたたみ、全階層チェックボックス、階層内番号表示 |
 | v0.4 | 階層内の順序変更・階層移動（SCR-11）、親削除で子を1階層昇格、コメントの取消線・削除、コメント付きタスクの💬マーク。`maxChildOrder` の既存バグ修正（削除済みタスクを採番から除外） |
+| v0.5 | YAMLISTへ改名。タスク行を「💬・チェック・番号・タスク名」配置に変更し、色マークを番号に表示（標準は黒、番号長押しで色変更）。プロジェクトの並べ替え・グループ化（折りたたみ／展開）、アーカイブ一覧画面、マーク解除、YAML貼り付け欄の入力補助（ダブルスペース／コロン／ハイフン）。タスクの「説明」「固定メモ」を廃止（YAMLの `description`/`comment` と旧バックアップの同項目はコメントとして取り込み）。DBスキーマ v3 |
 
 ---
 
@@ -49,7 +50,7 @@ v0.1〜v0.3 は利用者側で実機ビルド・起動を確認済み（v0.1でS
 
 ## ビルド手順
 
-1. Android Studio（Koala 以降 / AGP 8.5 対応版）で `NestProgress/` を開く。
+1. Android Studio（Koala 以降 / AGP 8.5 対応版）で `Yamlist/` を開く。
 2. JDK 17 を使う（`compileOptions` は 17）。
 3. 初回同期で `libs.versions.toml` の依存が解決される。ネットワーク（Maven Central / Google Maven）が必要。
 4. `app` 構成を実機または API 26 以上のエミュレータで Run。
@@ -70,10 +71,10 @@ CLI で回すなら:
 MVVM + 単方向データフロー。層は3つ。
 
 - **domain/** — Android 非依存の純 Kotlin。`Task` / `Project` / `TaskNode`、木構築 `TaskTreeBuilder`、進捗集計 `ProgressCalculator`。ここが仕様の心臓部で、単体テスト対象。
-- **data/** — Room（`entity` / `dao` / `NestDatabase`）、`NestRepository`（ドメイン⇔エンティティ変換を内部化し、VM にはドメイン型だけを見せる）、ファイル入出力（`yaml` / `pdf` / `backup`）。
+- **data/** — Room（`entity` / `dao` / `YamlistDatabase`）、`YamlistRepository`（ドメイン⇔エンティティ変換を内部化し、VM にはドメイン型だけを見せる）、ファイル入出力（`yaml` / `pdf` / `backup`）。
 - **ui/** — Jetpack Compose 画面＋ViewModel。画面ごとに `*Screen.kt` と `*ViewModel.kt`。Navigation Compose でルーティング。
 
-DI は Hilt。DB とサービスは `@Inject` コンストラクタ注入。`AppModule` は Room の `NestDatabase` だけを `@Provides` する。
+DI は Hilt。DB とサービスは `@Inject` コンストラクタ注入。`AppModule` は Room の `YamlistDatabase` だけを `@Provides` する。
 
 ### 進捗計算の要点（仕様 §8）
 
@@ -159,7 +160,7 @@ DI は Hilt。DB とサービスは `@Inject` コンストラクタ注入。`App
 
 **上限** — 一度に100件、1タイトル200文字。超過時はエラーを出し、YAML入力を案内する。
 
-**保存** — `NestRepository.addChildrenBulk()` が1トランザクションで処理。1件でも失敗すれば全件ロールバックし、中途半端な状態を残さない。親が削除済み・別プロジェクト所属の場合もここで弾く。
+**保存** — `YamlistRepository.addChildrenBulk()` が1トランザクションで処理。1件でも失敗すれば全件ロールバックし、中途半端な状態を残さない。親が削除済み・別プロジェクト所属の場合もここで弾く。
 
 ### 階層内優先順位・自動採番（追加仕様 §2）
 
@@ -206,7 +207,7 @@ DI は Hilt。DB とサービスは `@Inject` コンストラクタ注入。`App
 
 ### タスクの並べ替え・移動（v0.4 追記）
 
-**階層内での順序変更** — 長押しメニューに「上へ移動」「下へ移動」を追加した。同一階層の隣接タスクと displayOrder を入れ替える（`NestRepository.moveSibling`）。端まで行くと何もしない。
+**階層内での順序変更** — 長押しメニューに「上へ移動」「下へ移動」を追加した。同一階層の隣接タスクと displayOrder を入れ替える（`YamlistRepository.moveSibling`）。端まで行くと何もしない。
 
 **階層の移動** — 長押しメニューの「他の階層へ移動」から SCR-11（タスクの移動）を開く。プロジェクト内の全タスク＋「プロジェクト直下」を移動先として一覧表示し、選ぶと即座に移動する。**自分自身・自分の配下には移動できない**（サイクル防止）。移動先の階層の末尾（既存タスクの後ろ）に1000刻みで追加される。
 
@@ -220,7 +221,7 @@ DI は Hilt。DB とサービスは `@Inject` コンストラクタ注入。`App
 
 - コメントをタップすると取消線のON/OFFを切り替えられる（`TaskCommentEntity.struck`）。削除ではなく「もう関係ないが記録として残す」ためのもの。
 - 各コメントに削除アイコンを付けた（論理削除）。
-- コメントが1件以上あるタスクには、ツリー画面のマークの隣に💬を表示する（`NestRepository.observeCommentCounts()` でタスクごとの件数を集計）。取消線付きコメントもこのマークの対象に含まれる（記録として存在する限り目印を出す）。
+- コメントが1件以上あるタスクには、ツリー画面のマークの隣に💬を表示する（`YamlistRepository.observeCommentCounts()` でタスクごとの件数を集計）。取消線付きコメントもこのマークの対象に含まれる（記録として存在する限り目印を出す）。
 
 ### PDF（仕様 §16, §27.5）
 
@@ -248,7 +249,7 @@ DI は Hilt。DB とサービスは `@Inject` コンストラクタ注入。`App
 ## ディレクトリ
 
 ```
-app/src/main/java/com/example/nestprogress/
+app/src/main/java/com/example/yamlist/
   domain/
     model/       ドメイン型
     progress/    進捗計算・木構築・採番・階層番号（純Kotlin, テスト済み）

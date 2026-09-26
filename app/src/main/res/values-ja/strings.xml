@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">ネスト型進捗管理</string>
+    <string name="app_name">YAMLIST</string>
 
     <!-- Common -->
     <string name="save">保存</string>
@@ -60,9 +60,10 @@
     <string name="add_task">タスク追加</string>
     <string name="edit_task">タスク編集</string>
     <string name="title">タイトル</string>
-    <string name="fixed_comment">固定メモ</string>
     <string name="weight">重み</string>
-    <string name="weight_range">重みは0以上で入力してください</string>
+    <string name="weight_range">重みは0以上9999以下で入力してください</string>
+    <string name="invalid_due_date">正しい日付（YYYY-MM-DD）を入力してください</string>
+    <string name="invalid_planned_month">正しい予定月（YYYY-MM）を入力してください</string>
     <string name="planned_month">予定月 (YYYY-MM)</string>
     <string name="status">状態</string>
     <string name="mark">マーク</string>
@@ -103,7 +104,7 @@
     <string name="print">印刷</string>
     <string name="print_preview">PDFチェックリスト</string>
     <string name="include_done">完了タスクを含める</string>
-    <string name="include_comments">メモを含める</string>
+    <string name="include_comments">コメントを含める</string>
     <string name="include_weight">重みを含める</string>
     <string name="include_due">期限を含める</string>
     <string name="include_number">階層番号を含める</string>
@@ -158,4 +159,29 @@
     <string name="delete_promoting_children">このタスクのみ削除（子は残して1階層昇格）</string>
     <string name="promote_children_title">このタスクのみ削除しますか？</string>
     <string name="promote_children_body">配下の子タスクは1階層上がり、同じ順序のままプロジェクトに残ります。</string>
+    <!-- v0.5: archive list, project groups, task colors, YAML input helper -->
+    <string name="archive_list">アーカイブ一覧</string>
+    <string name="archive_empty">アーカイブされたプロジェクトはありません。</string>
+    <string name="unarchive">アーカイブ解除</string>
+    <string name="delete_project_fmt">「%1$s」を削除しますか？</string>
+    <string name="new_group">新規グループ</string>
+    <string name="rename_group">グループ名を変更</string>
+    <string name="delete_group">グループを削除</string>
+    <string name="delete_group_body_fmt">グループ「%1$s」を削除しますか？所属プロジェクトは削除されず、グループなしに戻ります。</string>
+    <string name="group_name">グループ名</string>
+    <string name="move_to_group">グループへ移動</string>
+    <string name="no_group">グループなし</string>
+    <string name="clear_mark">マークを解除</string>
+    <string name="mark_none">なし</string>
+    <string name="color_default">標準</string>
+    <string name="color_red">赤</string>
+    <string name="color_orange">オレンジ</string>
+    <string name="color_yellow">黄</string>
+    <string name="color_green">緑</string>
+    <string name="color_blue">青</string>
+    <string name="color_purple">紫</string>
+    <string name="color_gray">グレー</string>
+    <string name="yaml_helper_double_space">ダブルスペース</string>
+    <string name="yaml_helper_colon">コロン :</string>
+    <string name="yaml_helper_hyphen">ハイフン -</string>
 </resources>

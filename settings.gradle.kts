@@ -19,5 +19,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "NestProgress"
+rootProject.name = "YAMLIST"
 include(":app")
