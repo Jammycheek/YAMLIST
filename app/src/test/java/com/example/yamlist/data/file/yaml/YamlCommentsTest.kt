@@ -154,6 +154,17 @@ class YamlCommentsTest {
     }
 
     @Test
+    fun `single digit hour parses in completed_at`() {
+        val t = parseSingleTask(
+            """
+            - title: A
+              completed_at: 2026-9-5 9:30:00
+            """
+        )
+        assertEquals(LocalDateTime.of(2026, 9, 5, 9, 30), t.completedAt)
+    }
+
+    @Test
     fun `legacy boolean spellings work in typed fields`() {
         val t = parseSingleTask(
             """
@@ -252,5 +263,20 @@ class YamlCommentsTest {
         val parsed = (YamlImporter.parse(yaml) as YamlParseResult.Success).project
         assertEquals(comments, parsed.tasks[0].comments)
         assertEquals(emptyList<YamlComment>(), parsed.tasks[1].comments)
+    }
+
+    @Test
+    fun `export normalizes legacy NaN weight to excluded zero`() {
+        val now = LocalDateTime.of(2026, 1, 1, 0, 0)
+        val project = Project(uuid = "p", title = "P", createdAt = now, updatedAt = now)
+        val task = Task(
+            id = 1, uuid = "t", projectId = 1, title = "A", weight = Double.NaN,
+            createdAt = now, updatedAt = now,
+        )
+        val yaml = YamlExporter.export(project, listOf(TaskNode(task)))
+
+        assertFalse(yaml.contains("NaN"))
+        val parsed = (YamlImporter.parse(yaml) as YamlParseResult.Success).project.tasks.single()
+        assertEquals(0.0, parsed.weight, 0.0)
     }
 }

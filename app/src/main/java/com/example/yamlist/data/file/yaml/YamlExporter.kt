@@ -67,7 +67,10 @@ object YamlExporter {
         map["title"] = t.title
         if (includeOrder) map["order"] = t.displayOrder
         if (t.status != TaskStatus.TODO) map["status"] = t.status.name.lowercase()
-        if (t.weight != 1.0) map["weight"] = t.weight
+        // Old builds could store NaN or infinity. Zero preserves their excluded
+        // progress contribution while keeping the exported YAML importable.
+        val exportWeight = if (t.weight.isFinite()) t.weight else 0.0
+        if (exportWeight != 1.0) map["weight"] = exportWeight
         if (t.markType != MarkType.NONE) map["mark"] = t.markType.name.lowercase()
         t.colorCode?.let { c ->
             if (TaskColor.fromKeyOrNull(c) != TaskColor.NONE) map["color"] = c

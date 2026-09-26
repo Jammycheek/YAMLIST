@@ -123,6 +123,28 @@ class TaskDaoTest {
     }
 
     @Test
+    fun nestedExcludedBranchUpdatesItsIntermediateCheckboxState() = runBlocking {
+        val projectId = db.projectDao().insert(project())
+        val root = db.taskDao().insert(task("root", projectId, null))
+        val middle = db.taskDao().insert(task("middle", projectId, root))
+        val excluded = db.taskDao().insert(
+            task("excluded", projectId, middle).copy(isProgressTarget = false)
+        )
+        val measurable = db.taskDao().insert(task("measurable", projectId, root))
+        val repo = YamlistRepository(db)
+
+        repo.setSubtreeStatus(projectId, root, TaskStatus.DONE)
+        assertEquals("TODO", db.taskDao().getById(root)!!.status)
+        assertEquals("DONE", db.taskDao().getById(middle)!!.status)
+        assertEquals("DONE", db.taskDao().getById(excluded)!!.status)
+        assertEquals("DONE", db.taskDao().getById(measurable)!!.status)
+
+        repo.setSubtreeStatus(projectId, root, TaskStatus.TODO)
+        assertEquals("TODO", db.taskDao().getById(middle)!!.status)
+        assertEquals("TODO", db.taskDao().getById(excluded)!!.status)
+    }
+
+    @Test
     fun parentWithProgressTargetsStaysOutOfCompletedHistory() = runBlocking {
         val projectId = db.projectDao().insert(project())
         val root = db.taskDao().insert(task("root", projectId, null))

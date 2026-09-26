@@ -39,6 +39,7 @@ object YamlImporter {
     private val FLEX_DATE = DateTimeFormatter.ofPattern("uuuu-M-d")
         .withResolverStyle(ResolverStyle.STRICT)
     private val DATE_TIME_SEPARATOR = Regex("^(\\d{4})-(\\d{1,2})-(\\d{1,2})[Tt ]+")
+    private val SINGLE_DIGIT_HOUR = Regex("T(\\d)(?=:)")
     private val OFFSET_SUFFIX = Regex("([+-])(\\d{1,2})(?::?(\\d{2}))?$")
 
     fun parse(text: String): YamlParseResult {
@@ -370,7 +371,9 @@ object YamlImporter {
         val iso = s.replace(DATE_TIME_SEPARATOR) { match ->
             val (year, month, day) = match.destructured
             "$year-${month.padStart(2, '0')}-${day.padStart(2, '0')}T"
-        }.replace(" ", "")
+        }.replace(" ", "").replace(SINGLE_DIGIT_HOUR) { match ->
+            "T0${match.groupValues[1]}"
+        }
         val normalized = if ('T' in iso) iso.replace(OFFSET_SUFFIX) { match ->
             val sign = match.groupValues[1]
             val hours = match.groupValues[2].padStart(2, '0')

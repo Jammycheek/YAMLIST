@@ -253,20 +253,23 @@ class YamlistRepository @Inject constructor(
             val all = taskDao.getByProject(projectId)
             val byParent = all.groupBy { it.parentTaskId }
             val targets = ArrayList<TaskEntity>()
-            fun collect(id: Long) {
-                byParent[id]?.forEach { child ->
-                    if (child.parentTaskId == id && (byParent[child.id] == null)) {
-                        targets.add(child) // leaf
-                    }
-                    collect(child.id)
+            fun collect(node: TaskEntity): Boolean {
+                val children = byParent[node.id].orEmpty()
+                if (children.isEmpty()) {
+                    targets.add(node)
+                    return node.isProgressTarget && node.weight.isFinite() && node.weight > 0.0
                 }
+                var hasMeasurableLeaf = false
+                children.forEach { child ->
+                    if (collect(child)) hasMeasurableLeaf = true
+                }
+                // A branch without measurable leaves uses each parent's own
+                // status for its checkbox, including nested intermediate parents.
+                if (!hasMeasurableLeaf) targets.add(node)
+                return hasMeasurableLeaf
             }
             val root = all.firstOrNull { it.id == rootId } ?: return@withTransactionCompat
-            if (byParent[root.id] == null) targets.add(root) else collect(root.id)
-            // Only a subtree without measurable leaves uses the parent's own
-            // status for its checkbox. Normal parents remain derived from leaves.
-            if (targets.none { it.isProgressTarget && it.weight.isFinite() && it.weight > 0.0 } &&
-                targets.none { it.id == root.id }) targets.add(root)
+            collect(root)
             val nowTs = now()
             targets.forEach { e ->
                 val completedAt = if (status == TaskStatus.DONE) (e.completedAt ?: nowTs) else null
