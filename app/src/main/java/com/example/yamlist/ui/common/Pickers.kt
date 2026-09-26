@@ -1,14 +1,10 @@
 package com.example.yamlist.ui.common
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.FilterChip
@@ -18,13 +14,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.example.yamlist.R
 import com.example.yamlist.domain.model.MarkType
 import com.example.yamlist.domain.model.TaskColor
-import com.example.yamlist.ui.theme.TaskColors
 
 /**
  * Color choice row. [noneAsTextColor] draws "no color" in the default text color
@@ -44,28 +38,19 @@ fun ColorPickerRow(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
+            val noneColor =
+                if (noneAsTextColor) MaterialTheme.colorScheme.onSurface
+                else MaterialTheme.colorScheme.surfaceVariant
             TaskColor.entries.forEach { c ->
-                val selected = (selectedKey ?: "none") == c.key
-                val onClick = { onSelect(if (c == TaskColor.NONE) null else c.key) }
-                if (noneAsTextColor) {
-                    Box(Modifier.clickable(onClick = onClick)) { ColorSwatch(c, selected, size = 28.dp) }
-                } else {
-                    Box(
-                        Modifier
-                            .size(28.dp)
-                            .clip(CircleShape)
-                            .background(
-                                if (c == TaskColor.NONE) MaterialTheme.colorScheme.surfaceVariant
-                                else TaskColors.forKey(c.key)
-                            )
-                            .border(
-                                width = if (selected) 3.dp else 1.dp,
-                                color = if (selected) MaterialTheme.colorScheme.primary else Color.Gray,
-                                shape = CircleShape,
-                            )
-                            .clickable(onClick = onClick),
-                    )
-                }
+                ColorSwatch(
+                    color = c,
+                    selected = (selectedKey ?: "none") == c.key,
+                    size = 28.dp,
+                    noneColor = noneColor,
+                    modifier = Modifier
+                        .clip(CircleShape)
+                        .clickable { onSelect(if (c == TaskColor.NONE) null else c.key) },
+                )
             }
         }
     }

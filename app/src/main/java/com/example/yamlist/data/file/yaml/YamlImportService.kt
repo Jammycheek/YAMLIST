@@ -69,6 +69,10 @@ class YamlImportService @Inject constructor(
             repo.projects.insert(projectEntity)
         }
 
+        // Loaded once, after the old tree is gone, instead of a lookup per task.
+        val takenTaskUuids: MutableSet<String> =
+            if (mode == YamlImportMode.UUID_UPSERT) repo.tasks.allUuids().toHashSet() else HashSet()
+
         // Display order is scoped per level (spec §2.9): the YAML array position
         // drives a 1000-step sequence, and an explicit `order:` key wins when present.
         suspend fun insertTask(pt: ParsedTask, parentId: Long?, indexInLevel: Int) {
@@ -81,7 +85,7 @@ class YamlImportService @Inject constructor(
             val entity = TaskEntity(
                 id = 0,
                 uuid = pt.uuid
-                    ?.takeIf { mode == YamlImportMode.UUID_UPSERT && !repo.tasks.uuidExists(it) }
+                    ?.takeIf { mode == YamlImportMode.UUID_UPSERT && it !in takenTaskUuids }
                     ?: UUID.randomUUID().toString(),
                 projectId = projectId,
                 parentTaskId = parentId,
@@ -100,6 +104,7 @@ class YamlImportService @Inject constructor(
                 updatedAt = now,
             )
             val newId = repo.tasks.insert(entity)
+            takenTaskUuids.add(entity.uuid)
             if (pt.comments.isNotEmpty()) {
                 repo.comments.insertAll(
                     pt.comments.map { c ->

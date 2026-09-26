@@ -65,8 +65,17 @@ class YamlistRepository @Inject constructor(
 
     suspend fun deleteProject(id: Long) = projectDao.softDelete(id, now())
 
-    suspend fun setProjectArchived(id: Long, archived: Boolean) =
-        projectDao.setArchived(id, archived, now())
+    suspend fun setProjectArchived(id: Long, archived: Boolean) = withTransaction {
+        val timestamp = now()
+        projectDao.setArchived(id, archived, timestamp)
+        if (!archived) {
+            // Its old order was left out of renumbering while archived and may now
+            // tie with a sibling; put it back at the end of its level instead.
+            val project = projectDao.getById(id) ?: return@withTransaction
+            val order = projectDao.maxDisplayOrderInGroup(project.groupId) + TaskOrdering.STEP
+            projectDao.setOrder(id, order, timestamp)
+        }
+    }
 
     /**
      * Moves a project one step up or down within its own group (ungrouped
@@ -121,9 +130,18 @@ class YamlistRepository @Inject constructor(
         }
     }
 
-    /** Deletes the group only; its projects (archived ones included) become ungrouped. */
+    /**
+     * Deletes the group only. Its projects (archived ones included) become
+     * ungrouped, appended after the existing ungrouped ones in their old order.
+     */
     suspend fun deleteProjectGroup(groupId: Long) = withTransaction {
-        projectDao.clearGroup(groupId, now())
+        val timestamp = now()
+        val base = projectDao.maxDisplayOrderInGroup(null)
+        projectDao.getAllInGroup(groupId).forEachIndexed { i, p ->
+            projectDao.setGroupAndOrder(p.id, null, base + (i + 1) * TaskOrdering.STEP, timestamp)
+        }
+        // Soft-deleted members too, so nothing is left pointing at the removed group.
+        projectDao.clearGroup(groupId, timestamp)
         groupDao.delete(groupId)
     }
 

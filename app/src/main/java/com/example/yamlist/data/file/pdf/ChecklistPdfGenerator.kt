@@ -200,23 +200,39 @@ class ChecklistPdfGenerator {
      * before wrapped continuations, capped at [MAX_NOTE_LINES] lines per task.
      */
     private fun wrapNotes(notes: List<String>, paint: Paint, maxWidth: Float): List<String> {
-        val out = ArrayList<String>()
-        notes.forEachIndexed { i, note ->
+        val lines = ArrayList<Pair<String, String>>() // prefix to body
+        var truncated = false
+        notes@ for ((i, note) in notes.withIndex()) {
             var prefix = if (i == 0) NOTE_LABEL else NOTE_INDENT
             var rest = note.replace('\n', ' ')
             while (rest.isNotEmpty()) {
-                val fit = paint.breakText(prefix + rest, true, maxWidth, null) - prefix.length
-                var take = fit.coerceIn(1, rest.length)
-                if (take < rest.length && rest[take - 1].isHighSurrogate()) {
-                    take = if (take > 1) take - 1 else take + 1
+                if (lines.size == MAX_NOTE_LINES) {
+                    truncated = true
+                    break@notes
                 }
-                out.add(prefix + rest.substring(0, take))
+                val take = fitLength(prefix, rest, paint, maxWidth)
+                lines.add(prefix to rest.substring(0, take))
                 rest = rest.substring(take)
                 prefix = NOTE_INDENT
             }
         }
-        if (out.size <= MAX_NOTE_LINES) return out
-        return out.take(MAX_NOTE_LINES - 1) + (out[MAX_NOTE_LINES - 1] + "…")
+        if (truncated) {
+            // Re-fit the last line so the ellipsis stays inside the margin too.
+            val (prefix, body) = lines.removeAt(lines.lastIndex)
+            val keep = (fitLength(prefix, body + ELLIPSIS, paint, maxWidth) - ELLIPSIS.length).coerceAtLeast(0)
+            lines.add(prefix to (body.take(keep) + ELLIPSIS))
+        }
+        return lines.map { (prefix, body) -> prefix + body }
+    }
+
+    /** How many chars of [text] fit after [prefix] within [maxWidth]; at least one, never splitting a surrogate pair. */
+    private fun fitLength(prefix: String, text: String, paint: Paint, maxWidth: Float): Int {
+        val fit = paint.breakText(prefix + text, true, maxWidth, null) - prefix.length
+        var take = fit.coerceIn(1, text.length)
+        if (take < text.length && text[take - 1].isHighSurrogate()) {
+            take = if (take > 1) take - 1 else take + 1
+        }
+        return take
     }
 
     private fun trimNum(d: Double): String =
@@ -228,5 +244,6 @@ class ChecklistPdfGenerator {
         private const val NOTE_LABEL = "備考："
         private const val NOTE_INDENT = "　　　"
         private const val MAX_NOTE_LINES = 12
+        private const val ELLIPSIS = "…"
     }
 }

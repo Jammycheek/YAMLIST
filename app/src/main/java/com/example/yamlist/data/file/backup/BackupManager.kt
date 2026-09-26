@@ -140,11 +140,14 @@ class BackupManager @Inject constructor(
         val comments = json.decodeFromString<List<CommentDto>>(archive.commentsJson)
             .filter { it.taskId in restoredTaskIds }
         val settings = json.decodeFromString<List<SettingDto>>(archive.settingsJson)
-        val restoredAt = LocalDateTime.now()
+        val taskCreatedAt = parsed.tasks.associate { it.id to it.createdAt }
+        // Stamped with the task's own creation time: these were fields shown with
+        // the task from the start, so they sort ahead of its later comments.
         val legacyComments = parsed.legacyNotes.map { (taskId, body) ->
+            val stamp = taskCreatedAt.getValue(taskId)
             TaskCommentEntity(
                 uuid = UUID.randomUUID().toString(), taskId = taskId, body = body,
-                createdAt = restoredAt, updatedAt = restoredAt,
+                createdAt = stamp, updatedAt = stamp,
             )
         }
 

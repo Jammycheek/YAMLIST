@@ -66,6 +66,10 @@ interface ProjectDao {
     @Query("UPDATE projects SET groupId = :groupId, displayOrder = :order, updatedAt = :now WHERE id = :id")
     suspend fun setGroupAndOrder(id: Long, groupId: Long?, order: Long, now: java.time.LocalDateTime)
 
+    /** Live projects of a group, archived ones included, in list order. */
+    @Query("SELECT * FROM projects WHERE groupId = :groupId AND isDeleted = 0 ORDER BY displayOrder ASC, id ASC")
+    suspend fun getAllInGroup(groupId: Long): List<ProjectEntity>
+
     @Query("UPDATE projects SET groupId = NULL, updatedAt = :now WHERE groupId = :groupId")
     suspend fun clearGroup(groupId: Long, now: java.time.LocalDateTime)
 
@@ -228,9 +232,9 @@ interface TaskDao {
     @Query("DELETE FROM tasks WHERE projectId = :projectId")
     suspend fun hardDeleteAllOfProject(projectId: Long)
 
-    /** Includes soft-deleted rows: they still hold their uuid under the unique index. */
-    @Query("SELECT EXISTS(SELECT 1 FROM tasks WHERE uuid = :uuid)")
-    suspend fun uuidExists(uuid: String): Boolean
+    /** Every task uuid, soft-deleted rows included: they still hold theirs under the unique index. */
+    @Query("SELECT uuid FROM tasks")
+    suspend fun allUuids(): List<String>
 
     @Query("DELETE FROM tasks")
     suspend fun deleteAllHard()
@@ -238,7 +242,7 @@ interface TaskDao {
 
 @Dao
 interface TaskCommentDao {
-    @Query("SELECT * FROM task_comments WHERE taskId = :taskId AND isDeleted = 0 ORDER BY createdAt ASC")
+    @Query("SELECT * FROM task_comments WHERE taskId = :taskId AND isDeleted = 0 ORDER BY createdAt ASC, id ASC")
     fun observeByTask(taskId: Long): Flow<List<TaskCommentEntity>>
 
     @Query("SELECT * FROM task_comments WHERE isDeleted = 0")

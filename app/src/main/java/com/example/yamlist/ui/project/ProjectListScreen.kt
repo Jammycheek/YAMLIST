@@ -77,6 +77,7 @@ fun ProjectListScreen(
     var nameRequest by remember { mutableStateOf<GroupNameRequest?>(null) }
     var moveTarget by remember { mutableStateOf<ProjectCardUi?>(null) }
     var deleteGroupTarget by remember { mutableStateOf<ProjectGroup?>(null) }
+    var deleteProjectTarget by remember { mutableStateOf<ProjectCardUi?>(null) }
 
     Scaffold(
         topBar = {
@@ -126,7 +127,7 @@ fun ProjectListScreen(
             DropdownMenuItem(text = { Text(stringResource(R.string.archive)) },
                 onClick = { dismiss(); viewModel.archiveProject(card.project.id) })
             DropdownMenuItem(text = { Text(stringResource(R.string.delete)) },
-                onClick = { dismiss(); viewModel.deleteProject(card.project.id) })
+                onClick = { dismiss(); deleteProjectTarget = card })
         }
 
         LazyColumn(
@@ -186,6 +187,22 @@ fun ProjectListScreen(
             onCreateGroup = {
                 moveTarget = null
                 nameRequest = GroupNameRequest.Create(card.project.id)
+            },
+        )
+    }
+
+    deleteProjectTarget?.let { card ->
+        AlertDialog(
+            onDismissRequest = { deleteProjectTarget = null },
+            title = { Text(stringResource(R.string.delete)) },
+            text = { Text(stringResource(R.string.delete_project_fmt, card.project.title)) },
+            confirmButton = {
+                TextButton(onClick = { viewModel.deleteProject(card.project.id); deleteProjectTarget = null }) {
+                    Text(stringResource(R.string.delete))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { deleteProjectTarget = null }) { Text(stringResource(R.string.cancel)) }
             },
         )
     }

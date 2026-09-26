@@ -76,6 +76,45 @@ class YamlCommentsTest {
     }
 
     @Test
+    fun `unquoted timestamps in comments keep their written form`() {
+        val t = parseSingleTask(
+            """
+            - title: A
+              comments:
+                - 2024-01-01 09:00:00 +09:00
+                - 2024-01-01 10:30:00
+            """
+        )
+        assertEquals(listOf("2024-01-01 09:00:00 +09:00", "2024-01-01 10:30:00"), texts(t))
+    }
+
+    @Test
+    fun `date fields still parse from unquoted text`() {
+        val t = parseSingleTask(
+            """
+            - title: A
+              due_date: 2026-07-25
+              completed_at: 2026-07-25 10:30:00
+            """
+        )
+        assertEquals(java.time.LocalDate.of(2026, 7, 25), t.dueDate)
+        assertEquals(LocalDateTime.of(2026, 7, 25, 10, 30), t.completedAt)
+    }
+
+    @Test
+    fun `completed_at with an offset is converted to local time`() {
+        val t = parseSingleTask(
+            """
+            - title: A
+              completed_at: 2026-07-25T10:30:00Z
+            """
+        )
+        val expected = java.time.OffsetDateTime.of(2026, 7, 25, 10, 30, 0, 0, java.time.ZoneOffset.UTC)
+            .atZoneSameInstant(java.time.ZoneId.systemDefault()).toLocalDateTime()
+        assertEquals(expected, t.completedAt)
+    }
+
+    @Test
     fun `unquoted colon in a comment is an error, not a silent drop`() {
         val r = YamlImporter.parse(
             yamlWithTask(

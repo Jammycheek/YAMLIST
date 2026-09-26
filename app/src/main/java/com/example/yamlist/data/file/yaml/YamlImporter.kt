@@ -3,12 +3,20 @@ package com.example.yamlist.data.file.yaml
 import com.example.yamlist.domain.model.MarkType
 import com.example.yamlist.domain.model.ProgressMode
 import com.example.yamlist.domain.model.TaskStatus
+import org.yaml.snakeyaml.DumperOptions
 import org.yaml.snakeyaml.LoaderOptions
 import org.yaml.snakeyaml.Yaml
+import org.yaml.snakeyaml.constructor.Constructor
 import org.yaml.snakeyaml.error.MarkedYAMLException
+import org.yaml.snakeyaml.nodes.Tag
+import org.yaml.snakeyaml.representer.Representer
+import org.yaml.snakeyaml.resolver.Resolver
 import java.time.LocalDate
 import java.time.LocalDateTime
+import java.time.OffsetDateTime
+import java.time.ZoneId
 import java.time.format.DateTimeParseException
+import java.util.regex.Pattern
 
 /**
  * Converts YAML text into a validated [ParsedProject] (spec §15).
@@ -52,7 +60,20 @@ object YamlImporter {
             // Defensive limit against pathological inputs (billion-laughs style alias abuse).
             maxAliasesForCollections = 100
         }
-        return Yaml(options).load<Any?>(text)
+        val dumper = DumperOptions()
+        return Yaml(Constructor(options), Representer(dumper), dumper, options, NoTimestampResolver())
+            .load<Any?>(text)
+    }
+
+    /**
+     * Leaves unquoted timestamps as strings, so comments and titles keep exactly
+     * what was written; date fields are parsed from that text in [parseDate] /
+     * [parseDateTime] instead.
+     */
+    private class NoTimestampResolver : Resolver() {
+        override fun addImplicitResolver(tag: Tag, regexp: Pattern, first: String?, limit: Int) {
+            if (tag != Tag.TIMESTAMP) super.addImplicitResolver(tag, regexp, first, limit)
+        }
     }
 
     /** Public for unit testing: map an already-parsed object graph. */
@@ -216,19 +237,14 @@ object YamlImporter {
         else -> scalarText(item)?.let { YamlComment(it) }
     }
 
-    /**
-     * Text of a scalar, trimmed. Unquoted dates arrive from SnakeYAML as
-     * [java.util.Date] (UTC) and are turned back into their written form.
-     */
+    /** Text of a scalar, trimmed. */
     private fun scalarText(value: Any?): String? = when (value) {
         is String -> value.trim().takeIf { it.isNotEmpty() }
         is Number, is Boolean -> value.toString()
-        is java.util.Date -> value.toInstant().atOffset(java.time.ZoneOffset.UTC).let {
-            if (it.toLocalTime() == java.time.LocalTime.MIDNIGHT) it.toLocalDate().toString()
-            else it.toLocalDateTime().toString()
-        }
         else -> null
     }
+
+    private val DATE_TIME_SEPARATOR = Regex("^(\\d{4}-\\d{2}-\\d{2})[Tt ]+")
 
     private const val COMMENT_HINT =
         "コメントは文字列で指定してください（「:」を含む場合は \"...\" で囲んでください）。"
@@ -308,7 +324,7 @@ object YamlImporter {
             is java.util.Date -> return value.toInstant()
                 .atZone(java.time.ZoneId.systemDefault()).toLocalDate()
         }
-        val s = value.toString()
+        val s = value.toString().trim()
         return try {
             LocalDate.parse(s)
         } catch (e: DateTimeParseException) {
@@ -324,14 +340,17 @@ object YamlImporter {
             is java.util.Date -> return value.toInstant()
                 .atZone(java.time.ZoneId.systemDefault()).toLocalDateTime()
         }
-        val s = value.toString()
-        return try {
-            // Accept both "...T..." and offset forms; normalize to local.
-            if (s.contains('T')) LocalDateTime.parse(s.substringBefore('+').substringBefore('Z').trim())
-            else LocalDateTime.parse(s)
-        } catch (e: Exception) {
-            errors.add(YamlError(path, "completed_at は ISO 8601 形式です: $s"))
-            null
-        }
+        val s = value.toString().trim()
+        // YAML timestamp spellings: "T" or spaces between date and time, and an
+        // optional offset, which is converted to this device's local time.
+        val iso = s.replaceFirst(DATE_TIME_SEPARATOR, "\$1T").replace(" ", "")
+        return runCatching {
+            OffsetDateTime.parse(iso).atZoneSameInstant(ZoneId.systemDefault()).toLocalDateTime()
+        }.recoverCatching { LocalDateTime.parse(iso) }
+            .recoverCatching { LocalDate.parse(iso).atStartOfDay() }
+            .getOrElse {
+                errors.add(YamlError(path, "completed_at は ISO 8601 形式です: $s"))
+                null
+            }
     }
 }
