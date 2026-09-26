@@ -5,6 +5,6 @@
     ZIP backup (SCR-09) is the primary, portable mechanism.
 -->
 <full-backup-content>
-    <include domain="database" path="nest_progress.db" />
+    <include domain="database" path="yamlist.db" />
     <include domain="sharedpref" path="locale_prefs.xml" />
 </full-backup-content>
