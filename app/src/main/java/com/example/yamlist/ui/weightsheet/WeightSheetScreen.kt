@@ -101,8 +101,7 @@ fun WeightSheetScreen(
                     }
                     Button(
                         onClick = viewModel::save,
-                        enabled = state.loaded && !state.saving && !state.hasInvalid &&
-                            state.error == null,
+                        enabled = state.canSave,
                     ) { Text(stringResource(R.string.save)) }
                 }
             }
@@ -123,10 +122,12 @@ fun WeightSheetScreen(
             )
             if (state.error != null) {
                 Text(
-                    stringResource(
-                        if (state.error == WeightSheetError.CONFLICT)
-                            R.string.weight_sheet_conflict else R.string.weight_sheet_failed
-                    ),
+                    stringResource(when (state.error) {
+                        WeightSheetError.CONFLICT -> R.string.weight_sheet_conflict
+                        WeightSheetError.LOAD_FAILED -> R.string.weight_sheet_load_failed
+                        WeightSheetError.SAVE_FAILED -> R.string.weight_sheet_failed
+                        null -> error("Missing error")
+                    }),
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                     color = MaterialTheme.colorScheme.error,
                     style = MaterialTheme.typography.bodySmall,
@@ -154,7 +155,7 @@ fun WeightSheetScreen(
                         value = state.drafts[row.id].orEmpty(),
                         isTarget = state.isTarget(row),
                         share = state.share(row),
-                        enabled = !state.saving && state.error == null,
+                        enabled = state.canEdit,
                         onValueChange = { viewModel.changeWeight(row.id, it) },
                         onTargetChange = { viewModel.changeTarget(row.id, it) },
                     )

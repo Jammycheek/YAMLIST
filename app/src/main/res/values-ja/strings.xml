@@ -194,7 +194,8 @@
     <string name="weight_sheet_excluded">進捗対象外</string>
     <string name="weight_sheet_empty">このプロジェクトにはまだタスクがありません。</string>
     <string name="weight_sheet_conflict">画面を開いてからタスクが変更されました。新しい変更を上書きしないよう、戻って開き直してください。</string>
-    <string name="weight_sheet_failed">重みの読み込みまたは保存に失敗しました。もう一度お試しください。</string>
+    <string name="weight_sheet_load_failed">タスクを読み込めませんでした。戻って画面を開き直してください。</string>
+    <string name="weight_sheet_failed">重みを保存できませんでした。もう一度保存してください。</string>
     <string name="weight_sheet_discard_title">重みの変更を破棄しますか？</string>
     <string name="weight_sheet_discard_body">この画面で変更した重みはまだ保存されていません。</string>
     <string name="weight_sheet_discard">破棄</string>

@@ -1,6 +1,7 @@
 package com.example.yamlist.domain
 
 import com.example.yamlist.ui.weightsheet.WeightSheetRow
+import com.example.yamlist.ui.weightsheet.WeightSheetError
 import com.example.yamlist.ui.weightsheet.WeightSheetUiState
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -40,5 +41,19 @@ class WeightSheetUiStateTest {
         )
         assertTrue(state.hasInvalid)
         assertNull(state.total)
+    }
+
+    @Test fun saveFailureAllowsRetryButLoadFailureAndConflictDoNot() {
+        val base = WeightSheetUiState(
+            rows = listOf(first),
+            drafts = mapOf(1L to "4"),
+            targets = mapOf(1L to true),
+            loaded = true,
+        )
+        assertTrue(base.copy(error = WeightSheetError.SAVE_FAILED).canEdit)
+        assertTrue(base.copy(error = WeightSheetError.SAVE_FAILED).canSave)
+        assertFalse(base.copy(error = WeightSheetError.CONFLICT).canEdit)
+        assertFalse(base.copy(error = WeightSheetError.CONFLICT).canSave)
+        assertFalse(base.copy(error = WeightSheetError.LOAD_FAILED).canSave)
     }
 }

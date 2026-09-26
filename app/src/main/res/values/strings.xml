@@ -194,7 +194,8 @@
     <string name="weight_sheet_excluded">Not a progress target</string>
     <string name="weight_sheet_empty">No tasks in this project yet.</string>
     <string name="weight_sheet_conflict">Tasks changed while this screen was open. Go back and reopen it to avoid overwriting newer changes.</string>
-    <string name="weight_sheet_failed">Could not load or save weights. Please try again.</string>
+    <string name="weight_sheet_load_failed">Could not load tasks. Go back and reopen this screen.</string>
+    <string name="weight_sheet_failed">Could not save weights. Please try saving again.</string>
     <string name="weight_sheet_discard_title">Discard weight changes?</string>
     <string name="weight_sheet_discard_body">Changes on this screen have not been saved.</string>
     <string name="weight_sheet_discard">Discard</string>

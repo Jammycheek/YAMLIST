@@ -28,7 +28,7 @@ data class WeightSheetRow(
     val leafIds: List<Long>,
 )
 
-enum class WeightSheetError { CONFLICT, FAILED }
+enum class WeightSheetError { CONFLICT, LOAD_FAILED, SAVE_FAILED }
 
 data class WeightSheetUiState(
     val projectTitle: String = "",
@@ -54,6 +54,9 @@ data class WeightSheetUiState(
     val targetCount: Int get() = rows.count {
         it.isLeaf && isTarget(it) && (parsed(it) ?: 0.0) > 0.0
     }
+    val canEdit: Boolean get() = loaded && !saving &&
+        error != WeightSheetError.CONFLICT && error != WeightSheetError.LOAD_FAILED
+    val canSave: Boolean get() = canEdit && !hasInvalid
     fun share(row: WeightSheetRow): Double? {
         val all = total ?: return null
         if (row.leafIds.none { targets[it] == true }) return null
@@ -79,7 +82,7 @@ class WeightSheetViewModel @Inject constructor(
             try {
                 val project = repo.getProjectOnce(projectId)
                 if (project == null || project.isDeleted) {
-                    _state.update { it.copy(loaded = true, error = WeightSheetError.FAILED) }
+                    _state.update { it.copy(loaded = true, error = WeightSheetError.LOAD_FAILED) }
                     return@launch
                 }
                 val forest = TaskTreeBuilder.build(repo.observeTasks(projectId).first())
@@ -111,28 +114,28 @@ class WeightSheetViewModel @Inject constructor(
                     loaded = true,
                 )
             } catch (_: Exception) {
-                _state.update { it.copy(loaded = true, error = WeightSheetError.FAILED) }
+                _state.update { it.copy(loaded = true, error = WeightSheetError.LOAD_FAILED) }
             }
         }
     }
 
     fun changeWeight(id: Long, text: String) {
         _state.update { current ->
-            if (current.saving || current.rows.none { it.id == id && it.isLeaf }) current
+            if (!current.canEdit || current.rows.none { it.id == id && it.isLeaf }) current
             else current.copy(drafts = current.drafts + (id to text), error = null)
         }
     }
 
     fun changeTarget(id: Long, included: Boolean) {
         _state.update { current ->
-            if (current.saving || current.rows.none { it.id == id && it.isLeaf }) current
+            if (!current.canEdit || current.rows.none { it.id == id && it.isLeaf }) current
             else current.copy(targets = current.targets + (id to included), error = null)
         }
     }
 
     fun save() {
         val current = _state.value
-        if (!current.loaded || current.saving || current.hasInvalid || current.error != null) return
+        if (!current.canSave) return
         val changes = current.rows.filter { it.isLeaf }.mapNotNull { row ->
             val weight = current.parsed(row) ?: return@mapNotNull null
             val target = current.isTarget(row)
@@ -148,7 +151,7 @@ class WeightSheetViewModel @Inject constructor(
             _state.update { it.copy(saved = true) }
             return
         }
-        _state.update { it.copy(saving = true) }
+        _state.update { it.copy(saving = true, error = null) }
         viewModelScope.launch {
             try {
                 val updated = repo.updateTaskWeightsAndTargets(projectId, changes)
@@ -157,7 +160,7 @@ class WeightSheetViewModel @Inject constructor(
                         error = if (updated) null else WeightSheetError.CONFLICT)
                 }
             } catch (_: Exception) {
-                _state.update { it.copy(saving = false, error = WeightSheetError.FAILED) }
+                _state.update { it.copy(saving = false, error = WeightSheetError.SAVE_FAILED) }
             }
         }
     }
