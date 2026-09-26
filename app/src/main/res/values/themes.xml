@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+        Window-level theme applied before Compose sets content. Compose (NestProgressTheme)
+        owns the actual UI colors; this only needs a no-action-bar surface with a sane
+        window background. Parented on the platform Material theme to avoid a hard
+        dependency on com.google.android.material for a Compose-only app.
+    -->
+    <style name="Theme.NestProgress" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/window_background</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+    </style>
+</resources>
