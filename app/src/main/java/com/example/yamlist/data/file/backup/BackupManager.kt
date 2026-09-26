@@ -75,7 +75,8 @@ class BackupManager @Inject constructor(
         val groups = repo.projectGroups.getAllOnce()
         val projects = repo.projects.getAllOnce()
         val allTasks = projects.flatMap { repo.tasks.getByProject(it.id) }
-        val comments = repo.comments.getAllOnce()
+        val includedTaskIds = allTasks.mapTo(HashSet()) { it.id }
+        val comments = repo.comments.getAllOnce().filter { it.taskId in includedTaskIds }
         val settings = repo.settingDao.getAllOnce()
 
         val projectsYaml = dumpProjectsYaml(groups, projects, allTasks)
