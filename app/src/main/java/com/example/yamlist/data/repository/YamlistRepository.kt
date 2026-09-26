@@ -19,6 +19,13 @@ import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
 
+data class TaskWeightChange(
+    val oldWeight: Double,
+    val newWeight: Double,
+    val oldProgressTarget: Boolean,
+    val newProgressTarget: Boolean,
+)
+
 /**
  * Single point of DB access for the ViewModels. Keeps domain models on its surface
  * and entity mapping internal. Multi-statement operations that must be atomic
@@ -223,6 +230,35 @@ class YamlistRepository @Inject constructor(
 
     suspend fun updateTask(task: Task) {
         taskDao.update(task.copy(updatedAt = now()).toEntity())
+    }
+
+    /** Saves changed leaf weights together, without replacing other task fields.
+     * Returns false if the sheet became stale while it was open.
+     */
+    suspend fun updateTaskWeightsAndTargets(
+        projectId: Long,
+        changes: Map<Long, TaskWeightChange>,
+    ): Boolean = withTransaction {
+        val project = projectDao.getById(projectId)
+        if (project == null || project.isDeleted) return@withTransaction false
+        val tasks = taskDao.getByProject(projectId)
+        val byId = tasks.associateBy { it.id }
+        val parentIds = tasks.mapNotNull { it.parentTaskId }.toSet()
+        if (changes.any { (id, weights) ->
+                val task = byId[id]
+                val newWeight = weights.newWeight
+                task == null || id in parentIds ||
+                    task.weight.toBits() != weights.oldWeight.toBits() ||
+                    task.isProgressTarget != weights.oldProgressTarget ||
+                    !newWeight.isFinite() || newWeight < 0.0 || newWeight > 9999.0
+            }) return@withTransaction false
+        val timestamp = now()
+        changes.forEach { (id, change) ->
+            taskDao.setWeightAndProgressTarget(
+                id, change.newWeight, change.newProgressTarget, timestamp,
+            )
+        }
+        true
     }
 
     /**

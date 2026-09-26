@@ -20,11 +20,13 @@ import com.example.yamlist.ui.taskdetail.TaskDetailScreen
 import com.example.yamlist.ui.taskedit.TaskEditScreen
 import com.example.yamlist.ui.tasktree.TaskTreeScreen
 import com.example.yamlist.ui.yaml.YamlScreen
+import com.example.yamlist.ui.weightsheet.WeightSheetScreen
 
 object Routes {
     const val PROJECTS = "projects"
     const val PROJECT_EDIT = "project_edit"          // ?projectId=
     const val TASKS = "tasks"                          // /{projectId}
+    const val WEIGHT_SHEET = "weight_sheet"             // /{projectId}
     const val TASK_DETAIL = "task_detail"              // /{taskId}
     const val TASK_EDIT = "task_edit"                  // /{projectId}?taskId=&parentId=
     const val BULK_CHILD = "bulk_child"                // /{parentId}   (SCR-10)
@@ -83,7 +85,17 @@ fun YamlistNavHost(navController: NavHostController = rememberNavController()) {
                 onEditTask = { taskId -> navController.navigate("${Routes.TASK_EDIT}/$projectId?taskId=$taskId") },
                 onExportYaml = { navController.navigate("${Routes.YAML}?projectId=$projectId") },
                 onPrint = { navController.navigate("${Routes.PRINT}/$projectId") },
+                onOpenWeightSheet = {
+                    navController.navigate("${Routes.WEIGHT_SHEET}/$projectId")
+                },
             )
+        }
+
+        composable(
+            route = "${Routes.WEIGHT_SHEET}/{projectId}",
+            arguments = listOf(navArgument("projectId") { type = NavType.LongType }),
+        ) {
+            WeightSheetScreen(onDone = { navController.popBackStack() })
         }
 
         composable(
