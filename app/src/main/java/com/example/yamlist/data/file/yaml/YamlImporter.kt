@@ -61,18 +61,19 @@ object YamlImporter {
             maxAliasesForCollections = 100
         }
         val dumper = DumperOptions()
-        return Yaml(Constructor(options), Representer(dumper), dumper, options, NoTimestampResolver())
+        return Yaml(Constructor(options), Representer(dumper), dumper, options, TextPreservingResolver())
             .load<Any?>(text)
     }
 
     /**
-     * Leaves unquoted timestamps as strings, so comments and titles keep exactly
-     * what was written; date fields are parsed from that text in [parseDate] /
-     * [parseDateTime] instead.
+     * Text fields can contain clock times, equipment numbers, decimals, or words
+     * such as "on". Leave their spelling intact and parse typed fields below.
      */
-    private class NoTimestampResolver : Resolver() {
+    private class TextPreservingResolver : Resolver() {
         override fun addImplicitResolver(tag: Tag, regexp: Pattern, first: String?, limit: Int) {
-            if (tag != Tag.TIMESTAMP) super.addImplicitResolver(tag, regexp, first, limit)
+            if (tag !in setOf(Tag.TIMESTAMP, Tag.INT, Tag.FLOAT, Tag.BOOL)) {
+                super.addImplicitResolver(tag, regexp, first, limit)
+            }
         }
     }
 
@@ -85,7 +86,7 @@ object YamlImporter {
             )
 
         // schema_version (spec §15.4)
-        val schemaVersion = (rootMap["schema_version"] as? Number)?.toInt()
+        val schemaVersion = rootMap["schema_version"]?.toString()?.toIntOrNull()
         if (schemaVersion == null) {
             errors.add(YamlError("schema_version", "schema_version が必要です。"))
         } else if (schemaVersion != SUPPORTED_SCHEMA_VERSION) {
@@ -161,7 +162,18 @@ object YamlImporter {
         val plannedMonth = parsePlannedMonth(map["planned_month"], here, errors)
         val dueDate = parseDate(map["due_date"], "$here.due_date", errors)
         val completedAt = parseDateTime(map["completed_at"], "$here.completed_at", errors)
-        val progressTarget = (map["progress_target"] as? Boolean) ?: true
+        val progressTarget = when (val raw = map["progress_target"]) {
+            null -> true
+            is Boolean -> raw
+            is String -> raw.lowercase().toBooleanStrictOrNull() ?: run {
+                errors.add(YamlError(here, "progress_target は true/false で指定してください: $raw"))
+                true
+            }
+            else -> {
+                errors.add(YamlError(here, "progress_target は true/false で指定してください: $raw"))
+                true
+            }
+        }
         val order = parseOrder(map["order"], here, errors)
 
         val uuid = (map["uuid"] as? String)?.trim()?.takeIf { it.isNotBlank() }
@@ -231,8 +243,14 @@ object YamlImporter {
             val text = scalarText(item["text"])
             val struck = item["struck"]
             val onlyKnownKeys = item.keys.all { it == "text" || it == "struck" }
-            if (text == null || !onlyKnownKeys || (struck != null && struck !is Boolean)) null
-            else YamlComment(text, struck as? Boolean ?: false)
+            val struckValue = when (struck) {
+                null -> false
+                is Boolean -> struck
+                is String -> struck.lowercase().toBooleanStrictOrNull()
+                else -> null
+            }
+            if (text == null || !onlyKnownKeys || struckValue == null) null
+            else YamlComment(text, struckValue)
         }
         else -> scalarText(item)?.let { YamlComment(it) }
     }
@@ -344,8 +362,15 @@ object YamlImporter {
         // YAML timestamp spellings: "T" or spaces between date and time, and an
         // optional offset, which is converted to this device's local time.
         val iso = s.replaceFirst(DATE_TIME_SEPARATOR, "\$1T").replace(" ", "")
+        val offset = Regex("([+-])(\\d{1,2})(?::?(\\d{2}))?$")
+        val normalized = if ('T' in iso) iso.replace(offset) { match ->
+            val sign = match.groupValues[1]
+            val hours = match.groupValues[2].padStart(2, '0')
+            val minutes = match.groupValues[3].ifEmpty { "00" }
+            "$sign$hours:$minutes"
+        } else iso
         return runCatching {
-            OffsetDateTime.parse(iso).atZoneSameInstant(ZoneId.systemDefault()).toLocalDateTime()
+            OffsetDateTime.parse(normalized).atZoneSameInstant(ZoneId.systemDefault()).toLocalDateTime()
         }.recoverCatching { LocalDateTime.parse(iso) }
             .recoverCatching { LocalDate.parse(iso).atStartOfDay() }
             .getOrElse {

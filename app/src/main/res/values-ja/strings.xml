@@ -61,7 +61,8 @@
     <string name="edit_task">タスク編集</string>
     <string name="title">タイトル</string>
     <string name="weight">重み</string>
-    <string name="weight_range">重みは0以上で入力してください</string>
+    <string name="weight_range">重みは0以上9999以下で入力してください</string>
+    <string name="invalid_due_date">正しい日付（YYYY-MM-DD）を入力してください</string>
     <string name="planned_month">予定月 (YYYY-MM)</string>
     <string name="status">状態</string>
     <string name="mark">マーク</string>

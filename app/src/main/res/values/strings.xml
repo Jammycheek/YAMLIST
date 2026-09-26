@@ -61,7 +61,8 @@
     <string name="edit_task">Edit task</string>
     <string name="title">Title</string>
     <string name="weight">Weight</string>
-    <string name="weight_range">Weight must be 0 or greater</string>
+    <string name="weight_range">Weight must be between 0 and 9999</string>
+    <string name="invalid_due_date">Enter a valid date (YYYY-MM-DD)</string>
     <string name="planned_month">Planned month (YYYY-MM)</string>
     <string name="status">Status</string>
     <string name="mark">Mark</string>

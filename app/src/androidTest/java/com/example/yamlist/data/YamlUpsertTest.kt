@@ -19,6 +19,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
+import java.time.LocalDateTime
 
 /** Export -> UUID upsert import of the same project, which used to hit the task uuid index. */
 @RunWith(AndroidJUnit4::class)
@@ -69,6 +70,34 @@ class YamlUpsertTest {
         assertEquals(listOf("task-1"), tasks.map { it.uuid })
         val comments = repo.commentsForProject(projectId).values.flatten()
         assertEquals(listOf("有効" to false, "取消済み" to true), comments.map { it.body to it.struck })
+    }
+
+    @Test
+    fun upsertKeepsExistingArchiveSortOrderAndCompletionSettings() = runBlocking {
+        val service = YamlImportService(repo)
+        val yaml = """
+            schema_version: 1
+            project:
+              uuid: existing-project
+              title: Updated
+              tasks: []
+        """.trimIndent()
+        val id = service.import(parsed(yaml), YamlImportMode.UUID_UPSERT)
+        val completedAt = LocalDateTime.of(2025, 2, 3, 4, 5)
+        val before = db.projectDao().getById(id)!!.copy(
+            isArchived = true, displayOrder = 7000,
+            defaultSortMode = "DUE_ASC", completedAt = completedAt,
+        )
+        db.projectDao().update(before)
+
+        service.import(parsed(yaml), YamlImportMode.UUID_UPSERT)
+
+        val after = db.projectDao().getById(id)!!
+        assertEquals(true, after.isArchived)
+        assertEquals(7000L, after.displayOrder)
+        assertEquals("DUE_ASC", after.defaultSortMode)
+        assertEquals(completedAt, after.completedAt)
+        assertEquals("Updated", after.title)
     }
 
     private fun parsed(text: String) = when (val r = YamlImporter.parse(text)) {

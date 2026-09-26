@@ -149,8 +149,9 @@ interface TaskDao {
     suspend fun maxChildOrder(projectId: Long, parentId: Long?): Long
 
     @Query(
-        "SELECT * FROM tasks WHERE status = 'DONE' AND isDeleted = 0 " +
-            "AND completedAt IS NOT NULL ORDER BY completedAt DESC"
+        "SELECT t.* FROM tasks t JOIN projects p ON p.id = t.projectId " +
+            "WHERE t.status = 'DONE' AND t.isDeleted = 0 AND p.isDeleted = 0 " +
+            "AND t.completedAt IS NOT NULL ORDER BY t.completedAt DESC"
     )
     fun observeCompletedHistory(): Flow<List<TaskEntity>>
 
@@ -219,11 +220,11 @@ interface TaskDao {
     @Query(
         """
         WITH RECURSIVE subtree(id) AS (
-            SELECT id FROM tasks WHERE id = :rootId
+            SELECT id FROM tasks WHERE id = :rootId AND isDeleted = 0
             UNION ALL
-            SELECT t.id FROM tasks t JOIN subtree s ON t.parentTaskId = s.id
+            SELECT t.id FROM tasks t JOIN subtree s ON t.parentTaskId = s.id WHERE t.isDeleted = 0
         )
-        SELECT COUNT(*) - 1 FROM subtree
+        SELECT MAX(COUNT(*) - 1, 0) FROM subtree
         """
     )
     suspend fun countDescendants(rootId: Long): Int

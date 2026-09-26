@@ -306,11 +306,14 @@ private fun TaskRow(
         } else {
             // Parents show the state of everything underneath: fully done, part
             // way, or untouched. Ticking completes the subtree, unticking clears it.
-            val allDone = row.parentState == ParentDisplayState.DONE
+            val allDone = if (row.parentState == ParentDisplayState.NO_TARGET) {
+                task.status == TaskStatus.DONE
+            } else row.parentState == ParentDisplayState.DONE
             TriStateCheckbox(
                 state = when (row.parentState) {
                     ParentDisplayState.DONE -> ToggleableState.On
                     ParentDisplayState.IN_PROGRESS -> ToggleableState.Indeterminate
+                    ParentDisplayState.NO_TARGET -> if (allDone) ToggleableState.On else ToggleableState.Off
                     else -> ToggleableState.Off
                 },
                 onClick = { onToggleSubtreeDone(allDone) },

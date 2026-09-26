@@ -43,8 +43,10 @@ data class BulkChildUiState(
     val message: String? = null,
 ) {
     val count: Int get() = titles.size
+    val dueDateError: Boolean get() = dueDate.isNotBlank() &&
+        runCatching { java.time.LocalDate.parse(dueDate.trim()) }.isFailure
     val canSave: Boolean
-        get() = !saving && titles.isNotEmpty() && problems.isEmpty() && !weightError
+        get() = !saving && titles.isNotEmpty() && problems.isEmpty() && !weightError && !dueDateError
 }
 
 @HiltViewModel
@@ -75,7 +77,8 @@ class BulkChildCreateViewModel @Inject constructor(
 
     fun onWeightText(text: String) = _state.update {
         val parsed = text.trim().toDoubleOrNull()
-        it.copy(weightText = text, weightError = text.isNotBlank() && (parsed == null || parsed < 0.0))
+        it.copy(weightText = text, weightError = text.isNotBlank() &&
+            (parsed == null || !parsed.isFinite() || parsed < 0.0 || parsed > 9999.0))
     }
 
     fun onMark(mark: MarkType) = _state.update { it.copy(markType = mark) }

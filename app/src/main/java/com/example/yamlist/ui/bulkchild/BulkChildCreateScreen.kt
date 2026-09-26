@@ -159,6 +159,10 @@ fun BulkChildCreateScreen(
                 value = state.dueDate,
                 onValueChange = viewModel::onDueDate,
                 label = { Text(stringResource(R.string.due_date_input)) },
+                isError = state.dueDateError,
+                supportingText = {
+                    if (state.dueDateError) Text(stringResource(R.string.invalid_due_date))
+                },
                 modifier = Modifier.fillMaxWidth(),
             )
 

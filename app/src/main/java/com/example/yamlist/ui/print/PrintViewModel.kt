@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.IOException
 import java.io.OutputStream
 import javax.inject.Inject
 
@@ -50,9 +51,10 @@ class PrintViewModel @Inject constructor(
                 val tasks = repo.observeTasks(projectId).first()
                 val comments = repo.activeCommentsForProject(projectId)
                 withContext(Dispatchers.IO) {
-                    openStream()?.use { out ->
+                    (openStream() ?: throw IOException("保存先を開けませんでした。"))
+                        .use { out ->
                         generator.generate(project, tasks, comments, _options.value, out)
-                    } ?: return@withContext
+                    }
                 }
                 _message.value = "PDFを保存しました。"
             } catch (e: Exception) {

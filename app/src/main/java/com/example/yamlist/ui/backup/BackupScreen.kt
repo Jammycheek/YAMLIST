@@ -39,6 +39,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.InputStream
+import java.io.IOException
 import java.io.OutputStream
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
@@ -69,7 +70,8 @@ class BackupViewModel @Inject constructor(
             _state.value = _state.value.copy(busy = true, message = null)
             try {
                 withContext(Dispatchers.IO) {
-                    openStream()?.use { backupManager.createBackup(it) }
+                    (openStream() ?: throw IOException("保存先を開けませんでした。"))
+                        .use { backupManager.createBackup(it) }
                 }
                 _state.value = _state.value.copy(busy = false, message = "バックアップを作成しました。")
             } catch (e: Exception) {
@@ -102,7 +104,7 @@ class BackupViewModel @Inject constructor(
         viewModelScope.launch {
             _state.value = _state.value.copy(busy = true)
             try {
-                backupManager.restore(archive)
+                withContext(Dispatchers.IO) { backupManager.restore(archive) }
                 _state.value = BackupUiState(message = "復元しました。")
             } catch (e: Exception) {
                 // Transaction rolled back; existing data preserved (spec §26.5).
@@ -181,12 +183,14 @@ fun BackupScreen(
                 ))
             },
             confirmButton = {
-                TextButton(onClick = { viewModel.confirmRestore() }) {
+                TextButton(onClick = { viewModel.confirmRestore() }, enabled = !state.busy) {
                     Text(stringResource(R.string.restore_replace))
                 }
             },
             dismissButton = {
-                TextButton(onClick = { viewModel.cancelRestore() }) { Text(stringResource(R.string.cancel)) }
+                TextButton(onClick = { viewModel.cancelRestore() }, enabled = !state.busy) {
+                    Text(stringResource(R.string.cancel))
+                }
             },
         )
     }

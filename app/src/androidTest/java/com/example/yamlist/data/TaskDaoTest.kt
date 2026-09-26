@@ -6,6 +6,9 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.example.yamlist.data.local.YamlistDatabase
 import com.example.yamlist.data.local.entity.ProjectEntity
 import com.example.yamlist.data.local.entity.TaskEntity
+import com.example.yamlist.data.repository.YamlistRepository
+import com.example.yamlist.domain.model.TaskStatus
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -62,6 +65,44 @@ class TaskDaoTest {
         assertFalse(live.contains(a))
         assertFalse(live.contains(b))
         assertTrue(live.contains(sibling)) // untouched
+    }
+
+    @Test
+    fun descendantCountIgnoresPreviouslyDeletedChildren() = runBlocking {
+        val projectId = db.projectDao().insert(project())
+        val root = db.taskDao().insert(task("root", projectId, null))
+        val deleted = db.taskDao().insert(task("deleted", projectId, root))
+        db.taskDao().insert(task("live", projectId, root))
+        db.taskDao().softDeleteOne(deleted, t0)
+
+        assertEquals(1, db.taskDao().countDescendants(root))
+    }
+
+    @Test
+    fun completedHistoryExcludesDeletedProjects() = runBlocking {
+        val first = db.projectDao().insert(project())
+        val second = db.projectDao().insert(project().copy(uuid = "p2"))
+        db.taskDao().insert(task("hidden", first, null).copy(status = "DONE", completedAt = t0))
+        db.taskDao().insert(task("visible", second, null).copy(status = "DONE", completedAt = t0))
+        db.projectDao().softDelete(first, t0)
+
+        assertEquals(listOf("visible"), db.taskDao().observeCompletedHistory().first().map { it.title })
+    }
+
+    @Test
+    fun parentWithoutProgressTargetsCanBeMarkedDoneAndUndone() = runBlocking {
+        val projectId = db.projectDao().insert(project())
+        val root = db.taskDao().insert(task("root", projectId, null))
+        val child = db.taskDao().insert(task("child", projectId, root).copy(isProgressTarget = false))
+        val repo = YamlistRepository(db)
+
+        repo.setSubtreeStatus(projectId, root, TaskStatus.DONE)
+        assertEquals("DONE", db.taskDao().getById(root)!!.status)
+        assertEquals("DONE", db.taskDao().getById(child)!!.status)
+
+        repo.setSubtreeStatus(projectId, root, TaskStatus.TODO)
+        assertEquals("TODO", db.taskDao().getById(root)!!.status)
+        assertEquals("TODO", db.taskDao().getById(child)!!.status)
     }
 
     @Test

@@ -10,6 +10,7 @@ import com.example.yamlist.domain.model.TaskStatus
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
@@ -33,6 +34,7 @@ class TaskDetailViewModel @Inject constructor(
     val taskId: Long = savedStateHandle.get<Long>("taskId") ?: -1L
 
     private val taskFlow = repo.observeTask(taskId)
+    val deleteConfirmationCount = MutableStateFlow<Int?>(null)
 
     val ui: StateFlow<TaskDetailUi> =
         combine(
@@ -59,7 +61,12 @@ class TaskDetailViewModel @Inject constructor(
     fun toggleCommentStruck(commentId: Long, currentlyStruck: Boolean) =
         viewModelScope.launch { repo.setCommentStruck(commentId, !currentlyStruck) }
     fun deleteComment(commentId: Long) = viewModelScope.launch { repo.deleteComment(commentId) }
+    fun requestDeleteConfirmation() = viewModelScope.launch {
+        deleteConfirmationCount.value = repo.countDescendants(taskId)
+    }
+    fun cancelDelete() { deleteConfirmationCount.value = null }
     fun delete(onDeleted: () -> Unit) = viewModelScope.launch {
+        deleteConfirmationCount.value = null
         repo.deleteTaskSubtree(taskId); onDeleted()
     }
 }

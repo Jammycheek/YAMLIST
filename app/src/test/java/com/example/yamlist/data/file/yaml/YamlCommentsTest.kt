@@ -89,6 +89,32 @@ class YamlCommentsTest {
     }
 
     @Test
+    fun `unquoted clock times and equipment numbers keep their spelling`() {
+        val t = parseSingleTask(
+            """
+            - title: 0101
+              comments:
+                - 10:30
+                - 0101
+                - 1.10
+                - 1_000
+                - on
+            """
+        )
+        assertEquals("0101", t.title)
+        assertEquals(listOf("10:30", "0101", "1.10", "1_000", "on"), texts(t))
+    }
+
+    @Test
+    fun `unquoted numeric key in a structural outline remains a task title`() {
+        val result = YamlImporter.parse("案件名: P\n階層:\n  0101:\n    - 10:30\n")
+        assertTrue(result is YamlParseResult.Success)
+        val parent = (result as YamlParseResult.Success).project.tasks.single()
+        assertEquals("0101", parent.title)
+        assertEquals("10:30", parent.children.single().title)
+    }
+
+    @Test
     fun `date fields still parse from unquoted text`() {
         val t = parseSingleTask(
             """
@@ -112,6 +138,18 @@ class YamlCommentsTest {
         val expected = java.time.OffsetDateTime.of(2026, 7, 25, 10, 30, 0, 0, java.time.ZoneOffset.UTC)
             .atZoneSameInstant(java.time.ZoneId.systemDefault()).toLocalDateTime()
         assertEquals(expected, t.completedAt)
+    }
+
+    @Test
+    fun `completed_at accepts compact and short timezone offsets`() {
+        for (offset in listOf("+0900", "-5")) {
+            val t = parseSingleTask("- title: A\n  completed_at: 2026-07-25 10:30:00 $offset")
+            val zoneOffset = if (offset == "+0900") java.time.ZoneOffset.ofHours(9)
+                else java.time.ZoneOffset.ofHours(-5)
+            val expected = java.time.OffsetDateTime.of(2026, 7, 25, 10, 30, 0, 0, zoneOffset)
+                .atZoneSameInstant(java.time.ZoneId.systemDefault()).toLocalDateTime()
+            assertEquals(offset, expected, t.completedAt)
+        }
     }
 
     @Test
