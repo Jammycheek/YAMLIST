@@ -6,6 +6,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -65,6 +67,7 @@ fun WeightSheetScreen(
     BackHandler(enabled = state.saving || state.hasChanges) { tryBack() }
 
     Scaffold(
+        modifier = Modifier.imePadding(),
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.weight_sheet_title)) },
@@ -77,7 +80,7 @@ fun WeightSheetScreen(
             )
         },
         bottomBar = {
-            Surface(shadowElevation = 8.dp) {
+            Surface(modifier = Modifier.navigationBarsPadding(), shadowElevation = 8.dp) {
                 Row(
                     Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
                     verticalAlignment = Alignment.CenterVertically,
