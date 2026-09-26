@@ -184,4 +184,19 @@
     <string name="yaml_helper_double_space">Double space</string>
     <string name="yaml_helper_colon">Colon :</string>
     <string name="yaml_helper_hyphen">Hyphen -</string>
+    <string name="weight_sheet_title">Edit task weights</string>
+    <string name="weight_sheet_hint">Set each leaf task’s weight (0–9999) and whether it counts toward progress. A weight of 0 does not count. Parent percentages include their descendants.</string>
+    <string name="weight_sheet_target">Count</string>
+    <string name="weight_sheet_share">Share</string>
+    <string name="weight_sheet_total">Total weight: %1$s</string>
+    <string name="weight_sheet_target_count">%1$d active targets</string>
+    <string name="weight_sheet_invalid">Check the highlighted weights (0–9999).</string>
+    <string name="weight_sheet_excluded">Not a progress target</string>
+    <string name="weight_sheet_empty">No tasks in this project yet.</string>
+    <string name="weight_sheet_conflict">Tasks changed while this screen was open. Go back and reopen it to avoid overwriting newer changes.</string>
+    <string name="weight_sheet_load_failed">Could not load tasks. Go back and reopen this screen.</string>
+    <string name="weight_sheet_failed">Could not save weights. Please try saving again.</string>
+    <string name="weight_sheet_discard_title">Discard weight changes?</string>
+    <string name="weight_sheet_discard_body">Changes on this screen have not been saved.</string>
+    <string name="weight_sheet_discard">Discard</string>
 </resources>

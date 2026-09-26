@@ -23,6 +23,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Print
+import androidx.compose.material.icons.filled.TableChart
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenu
@@ -73,6 +74,7 @@ fun TaskTreeScreen(
     onEditTask: (Long) -> Unit,
     onExportYaml: () -> Unit,
     onPrint: () -> Unit,
+    onOpenWeightSheet: () -> Unit,
     viewModel: TaskTreeViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -91,6 +93,10 @@ fun TaskTreeScreen(
                     }
                 },
                 actions = {
+                    IconButton(onClick = onOpenWeightSheet) {
+                        Icon(Icons.Default.TableChart,
+                            contentDescription = stringResource(R.string.weight_sheet_title))
+                    }
                     IconButton(onClick = onPrint) {
                         Icon(Icons.Default.Print, contentDescription = stringResource(R.string.print))
                     }

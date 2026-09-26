@@ -172,6 +172,12 @@ interface TaskDao {
     @Query("UPDATE tasks SET colorCode = :colorCode, updatedAt = :now WHERE id = :id")
     suspend fun setColor(id: Long, colorCode: String?, now: java.time.LocalDateTime)
 
+    @Query("UPDATE tasks SET weight = :weight, isProgressTarget = :isProgressTarget, " +
+        "updatedAt = :now WHERE id = :id AND isDeleted = 0")
+    suspend fun setWeightAndProgressTarget(
+        id: Long, weight: Double, isProgressTarget: Boolean, now: java.time.LocalDateTime,
+    )
+
     @Query("UPDATE tasks SET markType = :markType, updatedAt = :now WHERE id = :id")
     suspend fun setMark(id: Long, markType: String?, now: java.time.LocalDateTime)
 

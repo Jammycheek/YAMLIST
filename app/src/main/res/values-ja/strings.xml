@@ -184,4 +184,19 @@
     <string name="yaml_helper_double_space">ダブルスペース</string>
     <string name="yaml_helper_colon">コロン :</string>
     <string name="yaml_helper_hyphen">ハイフン -</string>
+    <string name="weight_sheet_title">タスクの重みを一覧編集</string>
+    <string name="weight_sheet_hint">末端タスクの重み（0～9999）と進捗対象かどうかを設定します。重み0は集計されません。親には配下の割合を表示します。</string>
+    <string name="weight_sheet_target">対象</string>
+    <string name="weight_sheet_share">割合</string>
+    <string name="weight_sheet_total">重み合計：%1$s</string>
+    <string name="weight_sheet_target_count">集計対象 %1$d件</string>
+    <string name="weight_sheet_invalid">赤い欄を確認してください（0～9999）。</string>
+    <string name="weight_sheet_excluded">進捗対象外</string>
+    <string name="weight_sheet_empty">このプロジェクトにはまだタスクがありません。</string>
+    <string name="weight_sheet_conflict">画面を開いてからタスクが変更されました。新しい変更を上書きしないよう、戻って開き直してください。</string>
+    <string name="weight_sheet_load_failed">タスクを読み込めませんでした。戻って画面を開き直してください。</string>
+    <string name="weight_sheet_failed">重みを保存できませんでした。もう一度保存してください。</string>
+    <string name="weight_sheet_discard_title">重みの変更を破棄しますか？</string>
+    <string name="weight_sheet_discard_body">この画面で変更した重みはまだ保存されていません。</string>
+    <string name="weight_sheet_discard">破棄</string>
 </resources>
