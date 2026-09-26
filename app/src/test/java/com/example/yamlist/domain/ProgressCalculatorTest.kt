@@ -44,6 +44,13 @@ class ProgressCalculatorTest {
         ProgressCalculator.forForest(TaskTreeBuilder.build(tasks))
 
     @Test
+    fun `legacy non finite weights do not crash progress`() {
+        val p = progressOf(listOf(task(1, weight = Double.NaN), task(2, weight = 2.0)))
+        assertEquals(1, p.countTotal)
+        assertEquals(2.0, p.weightTotal, 0.0)
+    }
+
+    @Test
     fun `leaf count and weight aggregate correctly`() {
         val p = progressOf(
             listOf(

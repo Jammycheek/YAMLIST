@@ -141,6 +141,42 @@ class YamlCommentsTest {
     }
 
     @Test
+    fun `single digit month and day parse in date fields`() {
+        val t = parseSingleTask(
+            """
+            - title: A
+              due_date: 2026-9-5
+              completed_at: 2026-9-5 10:30:00
+            """
+        )
+        assertEquals(java.time.LocalDate.of(2026, 9, 5), t.dueDate)
+        assertEquals(LocalDateTime.of(2026, 9, 5, 10, 30), t.completedAt)
+    }
+
+    @Test
+    fun `legacy boolean spellings work in typed fields`() {
+        val t = parseSingleTask(
+            """
+            - title: A
+              progress_target: no
+              comments:
+                - text: old
+                  struck: yes
+            """
+        )
+        assertFalse(t.progressTarget)
+        assertEquals(listOf(YamlComment("old", struck = true)), t.comments)
+    }
+
+    @Test
+    fun `non finite weight is rejected`() {
+        for (value in listOf("NaN", "Infinity", "-Infinity")) {
+            val result = YamlImporter.parse(yamlWithTask("- title: A\n  weight: $value"))
+            assertTrue(value, result is YamlParseResult.Failure)
+        }
+    }
+
+    @Test
     fun `completed_at accepts compact and short timezone offsets`() {
         for (offset in listOf("+0900", "-5")) {
             val t = parseSingleTask("- title: A\n  completed_at: 2026-07-25 10:30:00 $offset")
@@ -183,7 +219,7 @@ class YamlCommentsTest {
 
     @Test
     fun `comment map with unknown keys or non boolean struck fails`() {
-        for (item in listOf(mapOf("text" to "a", "extra" to 1), mapOf("text" to "a", "struck" to "yes"))) {
+        for (item in listOf(mapOf("text" to "a", "extra" to 1), mapOf("text" to "a", "struck" to "maybe"))) {
             val r = YamlImporter.mapAndValidate(
                 mapOf(
                     "schema_version" to 1,

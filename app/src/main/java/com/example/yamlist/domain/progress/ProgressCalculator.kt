@@ -75,7 +75,7 @@ object ProgressCalculator {
         val task = node.task
         if (!task.isProgressTarget) return ProgressResult.EMPTY
         // weight <= 0 => excluded from denominator and numerator (§8.4).
-        if (task.weight <= 0.0) return ProgressResult.EMPTY
+        if (!task.weight.isFinite() || task.weight <= 0.0) return ProgressResult.EMPTY
         val done = task.status == TaskStatus.DONE
         return ProgressResult(
             countTotal = 1,

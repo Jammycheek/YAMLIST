@@ -1,6 +1,7 @@
 package com.example.yamlist.data
 
 import androidx.room.Room
+import androidx.lifecycle.SavedStateHandle
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.example.yamlist.data.local.YamlistDatabase
@@ -8,8 +9,11 @@ import com.example.yamlist.data.local.entity.ProjectEntity
 import com.example.yamlist.data.local.entity.TaskEntity
 import com.example.yamlist.data.repository.YamlistRepository
 import com.example.yamlist.domain.model.TaskStatus
+import com.example.yamlist.ui.bulkchild.BulkChildCreateViewModel
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -103,6 +107,40 @@ class TaskDaoTest {
         repo.setSubtreeStatus(projectId, root, TaskStatus.TODO)
         assertEquals("TODO", db.taskDao().getById(root)!!.status)
         assertEquals("TODO", db.taskDao().getById(child)!!.status)
+    }
+
+    @Test
+    fun parentWithProgressTargetsStaysOutOfCompletedHistory() = runBlocking {
+        val projectId = db.projectDao().insert(project())
+        val root = db.taskDao().insert(task("root", projectId, null))
+        val child = db.taskDao().insert(task("child", projectId, root))
+        val repo = YamlistRepository(db)
+
+        repo.setSubtreeStatus(projectId, root, TaskStatus.DONE)
+
+        assertEquals("TODO", db.taskDao().getById(root)!!.status)
+        assertEquals("DONE", db.taskDao().getById(child)!!.status)
+        assertEquals(listOf("child"), db.taskDao().observeCompletedHistory().first().map { it.title })
+    }
+
+    @Test
+    fun bulkCreationOfDoneChildrenStoresCompletionTime() = runBlocking {
+        val projectId = db.projectDao().insert(project())
+        val root = db.taskDao().insert(task("root", projectId, null))
+        val viewModel = BulkChildCreateViewModel(
+            YamlistRepository(db), SavedStateHandle(mapOf("parentId" to root)),
+        )
+        withTimeout(5000) { viewModel.state.first { it.projectId == projectId } }
+        viewModel.onInputText("child")
+        viewModel.onStatus(TaskStatus.DONE)
+        val saved = CompletableDeferred<Unit>()
+
+        viewModel.save { saved.complete(Unit) }
+        withTimeout(5000) { saved.await() }
+
+        val child = db.taskDao().getByProject(projectId).single { it.parentTaskId == root }
+        assertEquals("DONE", child.status)
+        assertTrue(child.completedAt != null)
     }
 
     @Test

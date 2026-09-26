@@ -54,6 +54,7 @@ fun TaskDetailScreen(
 ) {
     val ui by viewModel.ui.collectAsState()
     val deleteCount by viewModel.deleteConfirmationCount.collectAsState()
+    val deleteError by viewModel.deleteError.collectAsState()
     val task = ui.task
     var commentDraft by remember { mutableStateOf("") }
 
@@ -160,6 +161,7 @@ fun TaskDetailScreen(
             OutlinedButton(onClick = viewModel::requestDeleteConfirmation) {
                 Text(stringResource(R.string.delete))
             }
+            deleteError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
         }
     }
     deleteCount?.let { count ->

@@ -35,7 +35,7 @@ data class TaskEditState(
     val titleError: Boolean get() = title.isBlank() || title.length > 200
     val weightError: Boolean get() {
         val w = weightText.trim().ifBlank { "1.0" }.toDoubleOrNull() ?: return true
-        return w < 0.0 || w > 9999.0
+        return !w.isFinite() || w < 0.0 || w > 9999.0
     }
     val canSave: Boolean get() = !titleError && !weightError
 }

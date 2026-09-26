@@ -1,6 +1,7 @@
 package com.example.yamlist.ui.backup
 
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.compose.BackHandler
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -100,6 +101,7 @@ class BackupViewModel @Inject constructor(
     }
 
     fun confirmRestore() {
+        if (_state.value.busy) return
         val archive = _state.value.pendingRestore ?: return
         viewModelScope.launch {
             _state.value = _state.value.copy(busy = true)
@@ -114,7 +116,9 @@ class BackupViewModel @Inject constructor(
         }
     }
 
-    fun cancelRestore() { _state.value = _state.value.copy(pendingRestore = null, pendingManifest = null) }
+    fun cancelRestore() {
+        if (!_state.value.busy) _state.value = _state.value.copy(pendingRestore = null, pendingManifest = null)
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -125,6 +129,7 @@ fun BackupScreen(
 ) {
     val state by viewModel.state.collectAsState()
     val context = LocalContext.current
+    BackHandler(enabled = state.busy) { /* Keep restore alive until it finishes. */ }
 
     val createZip = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("application/zip")
@@ -142,7 +147,7 @@ fun BackupScreen(
             TopAppBar(
                 title = { Text(stringResource(R.string.backup_restore)) },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
+                    IconButton(onClick = onBack, enabled = !state.busy) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
                     }
                 },
@@ -174,7 +179,7 @@ fun BackupScreen(
     val manifest = state.pendingManifest
     if (state.pendingRestore != null && manifest != null) {
         AlertDialog(
-            onDismissRequest = { viewModel.cancelRestore() },
+            onDismissRequest = { if (!state.busy) viewModel.cancelRestore() },
             title = { Text(stringResource(R.string.restore_confirm_title)) },
             text = {
                 Text(stringResource(

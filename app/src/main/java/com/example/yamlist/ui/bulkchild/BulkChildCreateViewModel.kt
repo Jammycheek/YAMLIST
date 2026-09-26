@@ -43,10 +43,13 @@ data class BulkChildUiState(
     val message: String? = null,
 ) {
     val count: Int get() = titles.size
+    val plannedMonthError: Boolean get() = plannedMonth.isNotBlank() &&
+        runCatching { java.time.YearMonth.parse(plannedMonth.trim()) }.isFailure
     val dueDateError: Boolean get() = dueDate.isNotBlank() &&
         runCatching { java.time.LocalDate.parse(dueDate.trim()) }.isFailure
     val canSave: Boolean
-        get() = !saving && titles.isNotEmpty() && problems.isEmpty() && !weightError && !dueDateError
+        get() = !saving && titles.isNotEmpty() && problems.isEmpty() &&
+            !weightError && !plannedMonthError && !dueDateError
 }
 
 @HiltViewModel
@@ -113,6 +116,7 @@ class BulkChildCreateViewModel @Inject constructor(
                     parentTaskId = s.parentId,
                     title = "",
                     status = s.status,
+                    completedAt = if (s.status == TaskStatus.DONE) stamp else null,
                     weight = s.weightText.trim().toDoubleOrNull() ?: 1.0,
                     markType = s.markType,
                     colorCode = s.colorKey,

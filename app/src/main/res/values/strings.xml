@@ -63,6 +63,7 @@
     <string name="weight">Weight</string>
     <string name="weight_range">Weight must be between 0 and 9999</string>
     <string name="invalid_due_date">Enter a valid date (YYYY-MM-DD)</string>
+    <string name="invalid_planned_month">Enter a valid month (YYYY-MM)</string>
     <string name="planned_month">Planned month (YYYY-MM)</string>
     <string name="status">Status</string>
     <string name="mark">Mark</string>

@@ -153,6 +153,10 @@ fun BulkChildCreateScreen(
                 value = state.plannedMonth,
                 onValueChange = viewModel::onPlannedMonth,
                 label = { Text(stringResource(R.string.planned_month)) },
+                isError = state.plannedMonthError,
+                supportingText = {
+                    if (state.plannedMonthError) Text(stringResource(R.string.invalid_planned_month))
+                },
                 modifier = Modifier.fillMaxWidth(),
             )
             OutlinedTextField(

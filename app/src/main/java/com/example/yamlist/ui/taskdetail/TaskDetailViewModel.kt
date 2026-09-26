@@ -35,6 +35,8 @@ class TaskDetailViewModel @Inject constructor(
 
     private val taskFlow = repo.observeTask(taskId)
     val deleteConfirmationCount = MutableStateFlow<Int?>(null)
+    val deleteError = MutableStateFlow<String?>(null)
+    private var deleting = false
 
     val ui: StateFlow<TaskDetailUi> =
         combine(
@@ -62,11 +64,24 @@ class TaskDetailViewModel @Inject constructor(
         viewModelScope.launch { repo.setCommentStruck(commentId, !currentlyStruck) }
     fun deleteComment(commentId: Long) = viewModelScope.launch { repo.deleteComment(commentId) }
     fun requestDeleteConfirmation() = viewModelScope.launch {
+        if (deleting) return@launch
+        deleteError.value = null
         deleteConfirmationCount.value = repo.countDescendants(taskId)
     }
     fun cancelDelete() { deleteConfirmationCount.value = null }
-    fun delete(onDeleted: () -> Unit) = viewModelScope.launch {
+    fun delete(onDeleted: () -> Unit) {
+        if (deleting || deleteConfirmationCount.value == null) return
+        deleting = true
         deleteConfirmationCount.value = null
-        repo.deleteTaskSubtree(taskId); onDeleted()
+        viewModelScope.launch {
+            try {
+                repo.deleteTaskSubtree(taskId)
+            } catch (e: Exception) {
+                deleting = false
+                deleteError.value = e.message ?: "削除に失敗しました。"
+                return@launch
+            }
+            onDeleted()
+        }
     }
 }

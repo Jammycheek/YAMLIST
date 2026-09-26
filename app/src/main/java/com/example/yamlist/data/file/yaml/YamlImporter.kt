@@ -14,8 +14,11 @@ import org.yaml.snakeyaml.resolver.Resolver
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.OffsetDateTime
+import java.time.YearMonth
 import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 import java.time.format.DateTimeParseException
+import java.time.format.ResolverStyle
 import java.util.regex.Pattern
 
 /**
@@ -32,6 +35,11 @@ object YamlImporter {
     const val MAX_TASKS = 10_000
     const val MAX_DEPTH = 100
     const val MAX_SIZE_BYTES = 10 * 1024 * 1024
+    private val TEXT_TAGS = setOf(Tag.TIMESTAMP, Tag.INT, Tag.FLOAT, Tag.BOOL)
+    private val FLEX_DATE = DateTimeFormatter.ofPattern("uuuu-M-d")
+        .withResolverStyle(ResolverStyle.STRICT)
+    private val DATE_TIME_SEPARATOR = Regex("^(\\d{4})-(\\d{1,2})-(\\d{1,2})[Tt ]+")
+    private val OFFSET_SUFFIX = Regex("([+-])(\\d{1,2})(?::?(\\d{2}))?$")
 
     fun parse(text: String): YamlParseResult {
         if (text.toByteArray(Charsets.UTF_8).size > MAX_SIZE_BYTES) {
@@ -71,7 +79,7 @@ object YamlImporter {
      */
     private class TextPreservingResolver : Resolver() {
         override fun addImplicitResolver(tag: Tag, regexp: Pattern, first: String?, limit: Int) {
-            if (tag !in setOf(Tag.TIMESTAMP, Tag.INT, Tag.FLOAT, Tag.BOOL)) {
+            if (tag !in TEXT_TAGS) {
                 super.addImplicitResolver(tag, regexp, first, limit)
             }
         }
@@ -162,18 +170,12 @@ object YamlImporter {
         val plannedMonth = parsePlannedMonth(map["planned_month"], here, errors)
         val dueDate = parseDate(map["due_date"], "$here.due_date", errors)
         val completedAt = parseDateTime(map["completed_at"], "$here.completed_at", errors)
-        val progressTarget = when (val raw = map["progress_target"]) {
-            null -> true
-            is Boolean -> raw
-            is String -> raw.lowercase().toBooleanStrictOrNull() ?: run {
+        val progressTarget = map["progress_target"]?.let { raw ->
+            parseYamlBoolean(raw) ?: run {
                 errors.add(YamlError(here, "progress_target は true/false で指定してください: $raw"))
                 true
             }
-            else -> {
-                errors.add(YamlError(here, "progress_target は true/false で指定してください: $raw"))
-                true
-            }
-        }
+        } ?: true
         val order = parseOrder(map["order"], here, errors)
 
         val uuid = (map["uuid"] as? String)?.trim()?.takeIf { it.isNotBlank() }
@@ -243,12 +245,7 @@ object YamlImporter {
             val text = scalarText(item["text"])
             val struck = item["struck"]
             val onlyKnownKeys = item.keys.all { it == "text" || it == "struck" }
-            val struckValue = when (struck) {
-                null -> false
-                is Boolean -> struck
-                is String -> struck.lowercase().toBooleanStrictOrNull()
-                else -> null
-            }
+            val struckValue = if (struck == null) false else parseYamlBoolean(struck)
             if (text == null || !onlyKnownKeys || struckValue == null) null
             else YamlComment(text, struckValue)
         }
@@ -262,7 +259,16 @@ object YamlImporter {
         else -> null
     }
 
-    private val DATE_TIME_SEPARATOR = Regex("^(\\d{4}-\\d{2}-\\d{2})[Tt ]+")
+    /** Preserve SnakeYAML's former YAML 1.1 boolean spellings in typed fields. */
+    private fun parseYamlBoolean(value: Any): Boolean? = when (value) {
+        is Boolean -> value
+        is String -> when (value.trim().lowercase()) {
+            "true", "yes", "on" -> true
+            "false", "no", "off" -> false
+            else -> null
+        }
+        else -> null
+    }
 
     private const val COMMENT_HINT =
         "コメントは文字列で指定してください（「:」を含む場合は \"...\" で囲んでください）。"
@@ -315,8 +321,8 @@ object YamlImporter {
             errors.add(YamlError(path, "weight は数値である必要があります: $value"))
             return 1.0
         }
-        if (d < 0.0) {
-            errors.add(YamlError(path, "weight には0以上の数値を指定してください: $d"))
+        if (!d.isFinite() || d < 0.0) {
+            errors.add(YamlError(path, "weight には0以上9999以下の有限な数値を指定してください: $d"))
             return 1.0
         }
         if (d > 9999.0) {
@@ -328,7 +334,7 @@ object YamlImporter {
 
     private fun parsePlannedMonth(value: Any?, path: String, errors: MutableList<YamlError>): String? {
         val s = value as? String ?: return null
-        if (!Regex("""^\d{4}-\d{2}$""").matches(s)) {
+        if (runCatching { YearMonth.parse(s) }.isFailure) {
             errors.add(YamlError(path, "planned_month は YYYY-MM 形式です: $s"))
             return null
         }
@@ -344,7 +350,7 @@ object YamlImporter {
         }
         val s = value.toString().trim()
         return try {
-            LocalDate.parse(s)
+            LocalDate.parse(s, FLEX_DATE)
         } catch (e: DateTimeParseException) {
             errors.add(YamlError(path, "日付形式が不正です(YYYY-MM-DD): $s"))
             null
@@ -361,9 +367,11 @@ object YamlImporter {
         val s = value.toString().trim()
         // YAML timestamp spellings: "T" or spaces between date and time, and an
         // optional offset, which is converted to this device's local time.
-        val iso = s.replaceFirst(DATE_TIME_SEPARATOR, "\$1T").replace(" ", "")
-        val offset = Regex("([+-])(\\d{1,2})(?::?(\\d{2}))?$")
-        val normalized = if ('T' in iso) iso.replace(offset) { match ->
+        val iso = s.replace(DATE_TIME_SEPARATOR) { match ->
+            val (year, month, day) = match.destructured
+            "$year-${month.padStart(2, '0')}-${day.padStart(2, '0')}T"
+        }.replace(" ", "")
+        val normalized = if ('T' in iso) iso.replace(OFFSET_SUFFIX) { match ->
             val sign = match.groupValues[1]
             val hours = match.groupValues[2].padStart(2, '0')
             val minutes = match.groupValues[3].ifEmpty { "00" }
@@ -372,7 +380,7 @@ object YamlImporter {
         return runCatching {
             OffsetDateTime.parse(normalized).atZoneSameInstant(ZoneId.systemDefault()).toLocalDateTime()
         }.recoverCatching { LocalDateTime.parse(iso) }
-            .recoverCatching { LocalDate.parse(iso).atStartOfDay() }
+            .recoverCatching { LocalDate.parse(iso, FLEX_DATE).atStartOfDay() }
             .getOrElse {
                 errors.add(YamlError(path, "completed_at は ISO 8601 形式です: $s"))
                 null

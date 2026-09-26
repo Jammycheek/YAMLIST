@@ -263,9 +263,10 @@ class YamlistRepository @Inject constructor(
             }
             val root = all.firstOrNull { it.id == rootId } ?: return@withTransactionCompat
             if (byParent[root.id] == null) targets.add(root) else collect(root.id)
-            // A parent without eligible progress targets still needs a persistent
-            // checkbox state so the next tap can undo this bulk operation.
-            if (targets.none { it.id == root.id }) targets.add(root)
+            // Only a subtree without measurable leaves uses the parent's own
+            // status for its checkbox. Normal parents remain derived from leaves.
+            if (targets.none { it.isProgressTarget && it.weight.isFinite() && it.weight > 0.0 } &&
+                targets.none { it.id == root.id }) targets.add(root)
             val nowTs = now()
             targets.forEach { e ->
                 val completedAt = if (status == TaskStatus.DONE) (e.completedAt ?: nowTs) else null
