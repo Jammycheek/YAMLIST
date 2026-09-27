@@ -3,9 +3,12 @@ package com.example.yamlist.ui.print
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.yamlist.R
 import com.example.yamlist.data.file.pdf.ChecklistPdfGenerator
 import com.example.yamlist.data.repository.YamlistRepository
 import com.example.yamlist.domain.model.Project
+import com.example.yamlist.ui.common.DestinationUnavailable
+import com.example.yamlist.ui.common.UiText
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -14,7 +17,6 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.io.IOException
 import java.io.OutputStream
 import javax.inject.Inject
 
@@ -33,7 +35,7 @@ class PrintViewModel @Inject constructor(
     private val _options = MutableStateFlow(ChecklistPdfGenerator.Options())
     val options = _options.asStateFlow()
 
-    private val _message = MutableStateFlow<String?>(null)
+    private val _message = MutableStateFlow<UiText?>(null)
     val message = _message.asStateFlow()
 
     init {
@@ -44,21 +46,23 @@ class PrintViewModel @Inject constructor(
         _options.update(transform)
 
     /** Streams the PDF into the SAF-provided output stream (spec §21.3 keeps partials out). */
-    fun generateTo(openStream: () -> OutputStream?) {
+    fun generateTo(labels: ChecklistPdfGenerator.Labels, openStream: () -> OutputStream?) {
         viewModelScope.launch {
             try {
                 val project = _project.value ?: return@launch
                 val tasks = repo.observeTasks(projectId).first()
                 val comments = repo.activeCommentsForProject(projectId)
                 withContext(Dispatchers.IO) {
-                    (openStream() ?: throw IOException("保存先を開けませんでした。"))
+                    (openStream() ?: throw DestinationUnavailable())
                         .use { out ->
-                        generator.generate(project, tasks, comments, _options.value, out)
+                        generator.generate(project, tasks, comments, _options.value, out, labels)
                     }
                 }
-                _message.value = "PDFを保存しました。"
+                _message.value = UiText(R.string.pdf_saved)
+            } catch (e: DestinationUnavailable) {
+                _message.value = UiText(R.string.destination_unavailable)
             } catch (e: Exception) {
-                _message.value = "PDF生成に失敗しました: ${e.message}"
+                _message.value = UiText(R.string.pdf_failed_fmt, e.message.orEmpty())
             }
         }
     }

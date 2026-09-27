@@ -37,6 +37,7 @@ import com.example.yamlist.domain.bulk.BulkTitleParser
 import com.example.yamlist.domain.model.TaskStatus
 import com.example.yamlist.ui.common.ColorPickerRow
 import com.example.yamlist.ui.common.MarkPickerRow
+import com.example.yamlist.ui.common.resolve
 
 /**
  * SCR-10: creates many children of one parent at once (spec §1.3).
@@ -182,7 +183,7 @@ fun BulkChildCreateScreen(
             }
 
             state.message?.let {
-                Text(it, color = MaterialTheme.colorScheme.error)
+                Text(it.resolve(), color = MaterialTheme.colorScheme.error)
             }
 
             Button(

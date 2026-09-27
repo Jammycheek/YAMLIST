@@ -201,7 +201,7 @@ private fun OverallHeader(state: TaskTreeUiState) {
             !p.hasTargets -> stringResource(R.string.no_progress_target)
             mode == ProgressMode.COUNT -> stringResource(R.string.count_progress_fmt, p.countDone, p.countTotal)
             mode == ProgressMode.WEIGHT -> stringResource(R.string.weight_progress_fmt, p.weightPercent)
-            else -> stringResource(R.string.weight_progress_fmt, p.weightPercent) + "　" +
+            else -> stringResource(R.string.weight_progress_fmt, p.weightPercent) + "  " +
                 stringResource(R.string.count_progress_fmt, p.countDone, p.countTotal)
         }
         Text(text, style = MaterialTheme.typography.titleSmall)
@@ -354,16 +354,16 @@ private fun TaskRow(
             val sub = buildString {
                 if (!row.isLeaf) {
                     append(parentLabel)
-                    if (row.progress.hasTargets) append("　${row.progress.weightPercent}%")
+                    if (row.progress.hasTargets) append("  ${row.progress.weightPercent}%")
                 } else {
                     if (task.status == TaskStatus.HOLD) append(holdLabel)
                     if (weightLabel.isNotEmpty()) {
-                        if (isNotEmpty()) append("　")
+                        if (isNotEmpty()) append("  ")
                         append(weightLabel)
                     }
                 }
                 task.dueDate?.let {
-                    if (isNotEmpty()) append("　")
+                    if (isNotEmpty()) append("  ")
                     append(it.toString())
                 }
             }

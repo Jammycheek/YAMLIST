@@ -136,7 +136,7 @@
     <string name="bulk_parent_fmt">Parent: %1$s</string>
     <string name="bulk_titles_label">Titles (one per line)</string>
     <string name="bulk_titles_hint">Each line becomes one child task. Blank lines are ignored.</string>
-    <string name="bulk_strip_bullets">Strip leading "- " and "・"</string>
+    <string name="bulk_strip_bullets">Strip leading \"- \" and \"・\"</string>
     <string name="bulk_shared_attributes">Shared attributes (applied to all)</string>
     <string name="bulk_preview_fmt">To create: %1$d</string>
     <string name="bulk_create_fmt">Create %1$d task(s)</string>
@@ -163,11 +163,11 @@
     <string name="archive_list">Archived projects</string>
     <string name="archive_empty">No archived projects.</string>
     <string name="unarchive">Restore to list</string>
-    <string name="delete_project_fmt">Delete "%1$s"?</string>
+    <string name="delete_project_fmt">Delete \"%1$s\"?</string>
     <string name="new_group">New group</string>
     <string name="rename_group">Rename group</string>
     <string name="delete_group">Delete group</string>
-    <string name="delete_group_body_fmt">Delete group "%1$s"? Its projects are kept and become ungrouped.</string>
+    <string name="delete_group_body_fmt">Delete group \"%1$s\"? Its projects are kept and become ungrouped.</string>
     <string name="group_name">Group name</string>
     <string name="move_to_group">Move to group</string>
     <string name="no_group">No group</string>
@@ -199,4 +199,68 @@
     <string name="weight_sheet_discard_title">Discard weight changes?</string>
     <string name="weight_sheet_discard_body">Changes on this screen have not been saved.</string>
     <string name="weight_sheet_discard">Discard</string>
+    <!-- v0.7: English support (messages formerly hard-coded in Japanese) -->
+    <!-- YAML validation errors -->
+    <string name="yaml_err_line_fmt">Line %1$d</string>
+    <string name="yaml_err_file_too_large">The YAML file exceeds the %1$s MB limit.</string>
+    <string name="yaml_err_syntax">YAML syntax error: %1$s</string>
+    <string name="yaml_err_parse_failed">Could not read the YAML: %1$s</string>
+    <string name="yaml_err_root_not_mapping">The top level must be a mapping (key: value).</string>
+    <string name="yaml_err_schema_version_missing">schema_version is required.</string>
+    <string name="yaml_err_schema_version_unsupported">Unsupported schema_version (%1$s). Supported: %2$s</string>
+    <string name="yaml_err_project_missing">project is missing.</string>
+    <string name="yaml_err_project_title_missing">project.title is missing.</string>
+    <string name="yaml_err_duplicate_uuid">Duplicate UUID: %1$s</string>
+    <string name="yaml_err_too_many_tasks">Too many tasks (%2$s). The limit is %1$s.</string>
+    <string name="yaml_err_too_deep">Nesting is too deep (%2$s levels). The limit is %1$s.</string>
+    <string name="yaml_err_task_not_mapping">Each task must be a mapping (key: value).</string>
+    <string name="yaml_err_task_title_missing">The task has no title.</string>
+    <string name="yaml_err_invalid_progress_target">progress_target must be true or false: %1$s</string>
+    <string name="yaml_err_invalid_comment">Comments must be text. Put text containing \":\" in quotes (\"...\").</string>
+    <string name="yaml_err_order_not_integer">order must be a whole number: %1$s</string>
+    <string name="yaml_err_order_negative">order must be 0 or greater: %1$s</string>
+    <string name="yaml_err_invalid_progress_mode">progress_mode must be count, weight or both: %1$s</string>
+    <string name="yaml_err_invalid_status">status must be todo, done or hold: %1$s</string>
+    <string name="yaml_err_weight_not_number">weight must be a number: %1$s</string>
+    <string name="yaml_err_weight_out_of_range">weight must be a number from 0 to 9999: %1$s</string>
+    <string name="yaml_err_invalid_planned_month">planned_month must be in YYYY-MM format: %1$s</string>
+    <string name="yaml_err_invalid_date">Invalid date (use YYYY-MM-DD): %1$s</string>
+    <string name="yaml_err_invalid_datetime">completed_at must be an ISO 8601 date and time: %1$s</string>
+    <string name="import_failed_fmt">Import failed: %1$s</string>
+    <!-- Messages -->
+    <string name="destination_unavailable">Could not open the save location.</string>
+    <string name="file_open_failed">Could not open the file.</string>
+    <string name="backup_created">Backup created.</string>
+    <string name="backup_failed_fmt">Backup failed: %1$s</string>
+    <string name="backup_inspect_failed_fmt">Could not check the backup: %1$s</string>
+    <string name="backup_invalid_unreadable_fmt">Could not read the ZIP file: %1$s</string>
+    <string name="backup_invalid_no_manifest">manifest.json is missing.</string>
+    <string name="backup_invalid_unsupported_fmt">Unsupported backup format (%1$s).</string>
+    <string name="backup_invalid_checksum">The checksum does not match. The file may be damaged.</string>
+    <string name="restore_done">Restore complete.</string>
+    <string name="restore_failed_fmt">Restore failed. Your existing data was not changed: %1$s</string>
+    <string name="pdf_saved">PDF saved.</string>
+    <string name="pdf_failed_fmt">Could not create the PDF: %1$s</string>
+    <string name="delete_failed">Could not delete.</string>
+    <string name="save_failed">Could not save.</string>
+    <string name="field_label_fmt">"%1$s: "</string>
+    <!-- PDF checklist text -->
+    <string name="pdf_title_fmt">%1$s Checklist</string>
+    <string name="pdf_created_fmt">Created: %1$s</string>
+    <string name="pdf_page_fmt">Page %1$d</string>
+    <string name="pdf_notes_label">"Notes: "</string>
+    <string name="pdf_weight_fmt">Weight %1$s</string>
+    <string name="pdf_meta_fmt">(%1$s)</string>
+    <string name="pdf_done_tag">[Done]</string>
+    <!-- First-launch sample project -->
+    <string name="seed_project_title">Sample Site</string>
+    <string name="seed_project_description">First-launch sample</string>
+    <string name="seed_preparation">Preparation</string>
+    <string name="seed_drawing_check">Drawing check</string>
+    <string name="seed_schedule_check">Schedule check</string>
+    <string name="seed_onsite_work">On-site work</string>
+    <string name="seed_panel_check">Panel check</string>
+    <string name="seed_overall_test">Overall test</string>
+    <string name="seed_closeout">Close-out</string>
+    <string name="seed_report">Report</string>
 </resources>

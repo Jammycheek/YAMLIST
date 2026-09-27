@@ -45,17 +45,20 @@ object YamlImporter {
     fun parse(text: String): YamlParseResult {
         if (text.toByteArray(Charsets.UTF_8).size > MAX_SIZE_BYTES) {
             return YamlParseResult.Failure(
-                listOf(YamlError("file", "YAMLファイルが上限(10MB)を超えています。"))
+                listOf(YamlError("file", YamlErrorKind.FILE_TOO_LARGE, listOf("${MAX_SIZE_BYTES / (1024 * 1024)}")))
             )
         }
         val root = try {
             loadRoot(text)
         } catch (e: MarkedYAMLException) {
             val line = e.problemMark?.line?.plus(1)
-            val loc = if (line != null) "${line}行目" else "syntax"
-            return YamlParseResult.Failure(listOf(YamlError(loc, "YAML構文エラー: ${e.problem}")))
+            return YamlParseResult.Failure(
+                listOf(YamlError("syntax", YamlErrorKind.SYNTAX, listOf(e.problem.orEmpty()), line = line))
+            )
         } catch (e: Exception) {
-            return YamlParseResult.Failure(listOf(YamlError("syntax", "YAML解析に失敗しました: ${e.message}")))
+            return YamlParseResult.Failure(
+                listOf(YamlError("syntax", YamlErrorKind.PARSE_FAILED, listOf(e.message.orEmpty())))
+            )
         }
         // Accept both the strict schema and a loose structural outline. A loose
         // document (nested maps/lists of plain names) is normalized here so that
@@ -91,25 +94,30 @@ object YamlImporter {
         val errors = ArrayList<YamlError>()
         val rootMap = root as? Map<*, *>
             ?: return YamlParseResult.Failure(
-                listOf(YamlError("root", "ルートはマッピングである必要があります。"))
+                listOf(YamlError("root", YamlErrorKind.ROOT_NOT_MAPPING))
             )
 
         // schema_version (spec §15.4)
         val schemaVersion = rootMap["schema_version"]?.toString()?.toIntOrNull()
         if (schemaVersion == null) {
-            errors.add(YamlError("schema_version", "schema_version が必要です。"))
+            errors.add(YamlError("schema_version", YamlErrorKind.SCHEMA_VERSION_MISSING))
         } else if (schemaVersion != SUPPORTED_SCHEMA_VERSION) {
-            errors.add(YamlError("schema_version", "未対応の schema_version です($schemaVersion)。対応: $SUPPORTED_SCHEMA_VERSION"))
+            errors.add(
+                YamlError(
+                    "schema_version", YamlErrorKind.SCHEMA_VERSION_UNSUPPORTED,
+                    listOf("$schemaVersion", "$SUPPORTED_SCHEMA_VERSION"),
+                )
+            )
         }
 
         val projectMap = rootMap["project"] as? Map<*, *>
         if (projectMap == null) {
-            errors.add(YamlError("project", "project がありません。"))
+            errors.add(YamlError("project", YamlErrorKind.PROJECT_MISSING))
             return YamlParseResult.Failure(errors)
         }
 
         val title = (projectMap["title"] as? String)?.trim().orEmpty()
-        if (title.isBlank()) errors.add(YamlError("project.title", "project.title がありません。"))
+        if (title.isBlank()) errors.add(YamlError("project.title", YamlErrorKind.PROJECT_TITLE_MISSING))
 
         val progressMode = parseProgressMode(projectMap["progress_mode"], errors)
         val startDate = parseDate(projectMap["start_date"], "project.start_date", errors)
@@ -123,7 +131,7 @@ object YamlImporter {
 
         val projectUuid = (projectMap["uuid"] as? String)?.trim()?.takeIf { it.isNotBlank() }
         if (projectUuid != null && !seenUuids.add(projectUuid)) {
-            errors.add(YamlError("project.uuid", "UUID が重複しています: $projectUuid"))
+            errors.add(YamlError("project.uuid", YamlErrorKind.DUPLICATE_UUID, listOf(projectUuid)))
         }
 
         val parsed = ParsedProject(
@@ -139,10 +147,12 @@ object YamlImporter {
 
         // Size / depth limits (spec §15.5)
         if (parsed.taskCount() > MAX_TASKS) {
-            errors.add(YamlError("tasks", "タスク数が上限($MAX_TASKS)を超えています(${parsed.taskCount()})。"))
+            errors.add(
+                YamlError("tasks", YamlErrorKind.TOO_MANY_TASKS, listOf("$MAX_TASKS", "${parsed.taskCount()}"))
+            )
         }
         if (parsed.maxDepth() > MAX_DEPTH) {
-            errors.add(YamlError("tasks", "階層が上限($MAX_DEPTH)を超えています(${parsed.maxDepth()})。"))
+            errors.add(YamlError("tasks", YamlErrorKind.TOO_DEEP, listOf("$MAX_DEPTH", "${parsed.maxDepth()}")))
         }
 
         return if (errors.isEmpty()) YamlParseResult.Success(parsed)
@@ -158,12 +168,12 @@ object YamlImporter {
     ): ParsedTask? {
         val map = node as? Map<*, *>
         if (map == null) {
-            errors.add(YamlError("$path[#${index + 1}]", "タスクはマッピングである必要があります。"))
+            errors.add(YamlError("$path[#${index + 1}]", YamlErrorKind.TASK_NOT_MAPPING))
             return null
         }
         val title = (map["title"] as? String)?.trim().orEmpty()
-        val here = if (title.isBlank()) "$path > (無題#${index + 1})" else "$path > $title"
-        if (title.isBlank()) errors.add(YamlError(here, "タスクの title がありません。"))
+        val here = if (title.isBlank()) "$path > (#${index + 1})" else "$path > $title"
+        if (title.isBlank()) errors.add(YamlError(here, YamlErrorKind.TASK_TITLE_MISSING))
 
         val status = parseStatus(map["status"], here, errors)
         val weight = parseWeight(map["weight"], here, errors)
@@ -173,7 +183,7 @@ object YamlImporter {
         val completedAt = parseDateTime(map["completed_at"], "$here.completed_at", errors)
         val progressTarget = map["progress_target"]?.let { raw ->
             parseYamlBoolean(raw) ?: run {
-                errors.add(YamlError(here, "progress_target は true/false で指定してください: $raw"))
+                errors.add(YamlError(here, YamlErrorKind.INVALID_PROGRESS_TARGET, listOf("$raw")))
                 true
             }
         } ?: true
@@ -181,7 +191,7 @@ object YamlImporter {
 
         val uuid = (map["uuid"] as? String)?.trim()?.takeIf { it.isNotBlank() }
         if (uuid != null && !seenUuids.add(uuid)) {
-            errors.add(YamlError(here, "UUID が重複しています: $uuid"))
+            errors.add(YamlError(here, YamlErrorKind.DUPLICATE_UUID, listOf(uuid)))
         }
 
         val rawChildren = map["tasks"] as? List<*> ?: emptyList<Any?>()
@@ -217,7 +227,7 @@ object YamlImporter {
         for (key in listOf("description", "comment")) {
             val raw = map[key] ?: continue
             val text = scalarText(raw)
-            if (text == null && raw !is String) errors.add(YamlError(path, "$key $COMMENT_HINT"))
+            if (text == null && raw !is String) errors.add(YamlError("$path.$key", YamlErrorKind.INVALID_COMMENT))
             text?.let { out.add(YamlComment(it)) }
         }
         val items = when (val raw = map["comments"]) {
@@ -230,7 +240,7 @@ object YamlImporter {
             when {
                 comment != null -> if (comment.text.isNotEmpty()) out.add(comment)
                 item == null -> Unit
-                else -> errors.add(YamlError("$path.comments[#${i + 1}]", COMMENT_HINT))
+                else -> errors.add(YamlError("$path.comments[#${i + 1}]", YamlErrorKind.INVALID_COMMENT))
             }
         }
         return out
@@ -271,18 +281,15 @@ object YamlImporter {
         else -> null
     }
 
-    private const val COMMENT_HINT =
-        "コメントは文字列で指定してください（「:」を含む場合は \"...\" で囲んでください）。"
-
     private fun parseOrder(value: Any?, path: String, errors: MutableList<YamlError>): Long? {
         if (value == null) return null
         val n = (value as? Number)?.toLong() ?: (value as? String)?.toLongOrNull()
         if (n == null) {
-            errors.add(YamlError(path, "order は整数である必要があります: $value"))
+            errors.add(YamlError(path, YamlErrorKind.ORDER_NOT_INTEGER, listOf("$value")))
             return null
         }
         if (n < 0) {
-            errors.add(YamlError(path, "order には0以上の整数を指定してください: $n"))
+            errors.add(YamlError(path, YamlErrorKind.ORDER_NEGATIVE, listOf("$n")))
             return null
         }
         return n
@@ -295,7 +302,7 @@ object YamlImporter {
             "weight" -> ProgressMode.WEIGHT
             "both" -> ProgressMode.BOTH
             else -> {
-                errors.add(YamlError("project.progress_mode", "progress_mode は count/weight/both のいずれかです: $value"))
+                errors.add(YamlError("project.progress_mode", YamlErrorKind.INVALID_PROGRESS_MODE, listOf("$value")))
                 ProgressMode.BOTH
             }
         }
@@ -308,7 +315,7 @@ object YamlImporter {
             "done" -> TaskStatus.DONE
             "hold" -> TaskStatus.HOLD
             else -> {
-                errors.add(YamlError(path, "status は todo/done/hold のいずれかです: $value"))
+                errors.add(YamlError(path, YamlErrorKind.INVALID_STATUS, listOf("$value")))
                 TaskStatus.TODO
             }
         }
@@ -319,15 +326,15 @@ object YamlImporter {
         val d = (value as? Number)?.toDouble()
             ?: (value as? String)?.toDoubleOrNull()
         if (d == null) {
-            errors.add(YamlError(path, "weight は数値である必要があります: $value"))
+            errors.add(YamlError(path, YamlErrorKind.WEIGHT_NOT_NUMBER, listOf("$value")))
             return 1.0
         }
         if (!d.isFinite() || d < 0.0) {
-            errors.add(YamlError(path, "weight には0以上9999以下の有限な数値を指定してください: $d"))
+            errors.add(YamlError(path, YamlErrorKind.WEIGHT_OUT_OF_RANGE, listOf("$value")))
             return 1.0
         }
         if (d > 9999.0) {
-            errors.add(YamlError(path, "weight は9999以下です: $d"))
+            errors.add(YamlError(path, YamlErrorKind.WEIGHT_OUT_OF_RANGE, listOf("$value")))
             return 9999.0
         }
         return d
@@ -336,7 +343,7 @@ object YamlImporter {
     private fun parsePlannedMonth(value: Any?, path: String, errors: MutableList<YamlError>): String? {
         val s = value as? String ?: return null
         if (runCatching { YearMonth.parse(s) }.isFailure) {
-            errors.add(YamlError(path, "planned_month は YYYY-MM 形式です: $s"))
+            errors.add(YamlError(path, YamlErrorKind.INVALID_PLANNED_MONTH, listOf(s)))
             return null
         }
         return s
@@ -353,7 +360,7 @@ object YamlImporter {
         return try {
             LocalDate.parse(s, FLEX_DATE)
         } catch (e: DateTimeParseException) {
-            errors.add(YamlError(path, "日付形式が不正です(YYYY-MM-DD): $s"))
+            errors.add(YamlError(path, YamlErrorKind.INVALID_DATE, listOf(s)))
             null
         }
     }
@@ -385,7 +392,7 @@ object YamlImporter {
         }.recoverCatching { LocalDateTime.parse(iso) }
             .recoverCatching { LocalDate.parse(iso, FLEX_DATE).atStartOfDay() }
             .getOrElse {
-                errors.add(YamlError(path, "completed_at は ISO 8601 形式です: $s"))
+                errors.add(YamlError(path, YamlErrorKind.INVALID_DATETIME, listOf(s)))
                 null
             }
     }

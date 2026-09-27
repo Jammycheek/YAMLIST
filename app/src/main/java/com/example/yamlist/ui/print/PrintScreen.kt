@@ -29,12 +29,16 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.yamlist.R
+import com.example.yamlist.ui.common.resolve
 import com.example.yamlist.data.file.pdf.ChecklistPdfGenerator
+import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
 
 @OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -46,12 +50,24 @@ fun PrintScreen(
     val options by viewModel.options.collectAsState()
     val message by viewModel.message.collectAsState()
     val context = LocalContext.current
+    val locale = LocalConfiguration.current.locales[0]
+    val labels = ChecklistPdfGenerator.Labels(
+        titleFormat = stringResource(R.string.pdf_title_fmt),
+        createdFormat = stringResource(R.string.pdf_created_fmt),
+        pageFormat = stringResource(R.string.pdf_page_fmt),
+        notes = stringResource(R.string.pdf_notes_label),
+        weightFormat = stringResource(R.string.pdf_weight_fmt),
+        metaFormat = stringResource(R.string.pdf_meta_fmt),
+        doneTag = stringResource(R.string.pdf_done_tag),
+        createdDate = DateTimeFormatter.ofLocalizedDate(FormatStyle.LONG).withLocale(locale),
+        dueDate = DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM).withLocale(locale),
+    )
 
     val createPdf = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("application/pdf")
     ) { uri ->
         uri ?: return@rememberLauncherForActivityResult
-        viewModel.generateTo { context.contentResolver.openOutputStream(uri) }
+        viewModel.generateTo(labels) { context.contentResolver.openOutputStream(uri) }
     }
 
     Scaffold(
@@ -108,7 +124,7 @@ fun PrintScreen(
                 modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
             ) { Text(stringResource(R.string.generate_pdf)) }
 
-            message?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
+            message?.let { Text(it.resolve(), style = MaterialTheme.typography.bodyMedium) }
         }
     }
 }

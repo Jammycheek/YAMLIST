@@ -28,7 +28,8 @@ data class YamlUiState(
     val importMode: YamlImportMode = YamlImportMode.NEW,
     val importDone: Boolean = false,
     val exportText: String = "",
-    val message: String? = null,
+    /** Set when saving an import failed; holds the underlying error detail. */
+    val importFailure: String? = null,
 )
 
 @HiltViewModel
@@ -60,21 +61,18 @@ class YamlViewModel @Inject constructor(
         }
     }
 
-    fun loadSample() = _state.update { it.copy(inputText = SAMPLE_YAML, preview = null, errors = emptyList()) }
-
-    fun loadStructureSample() = _state.update {
-        it.copy(inputText = SAMPLE_STRUCTURE_YAML, preview = null, errors = emptyList())
-    }
+    /** Samples live in res/raw (English) and res/raw-ja, so the screen reads them in the app's language. */
+    fun loadSample(text: String) = _state.update { it.copy(inputText = text, preview = null, errors = emptyList()) }
 
     fun import(onDone: (Long) -> Unit) {
         val preview = _state.value.preview ?: return
         viewModelScope.launch {
             try {
                 val id = importService.import(preview, _state.value.importMode)
-                _state.update { it.copy(importDone = true, message = null) }
+                _state.update { it.copy(importDone = true, importFailure = null) }
                 onDone(id)
             } catch (e: Exception) {
-                _state.update { it.copy(message = "インポートに失敗しました: ${e.message}") }
+                _state.update { it.copy(importFailure = e.message.orEmpty()) }
             }
         }
     }
@@ -90,55 +88,5 @@ class YamlViewModel @Inject constructor(
                 it.copy(exportText = YamlExporter.export(project, forest, commentsByTask = comments))
             }
         }
-    }
-
-    companion object {
-        val SAMPLE_YAML = """
-            schema_version: 1
-            project:
-              title: "現場A / Site A"
-              description: "空調自動制御試運転"
-              progress_mode: "weight"
-              tasks:
-                - title: "事前準備"
-                  tasks:
-                    - title: "図面確認"
-                      weight: 2
-                      mark: "important"
-                    - title: "I/Oリスト確認"
-                      weight: 3
-                - title: "現場作業"
-                  tasks:
-                    - title: "盤チェック"
-                      weight: 2
-                    - title: "自動制御試験"
-                      weight: 8
-                      mark: "warning"
-        """.trimIndent()
-
-        /**
-         * Structure-only outline. Nested names are turned into a task tree on
-         * import; weight/status are left at defaults and edited in the app.
-         */
-        val SAMPLE_STRUCTURE_YAML = """
-            案件名: 昭和田中生命ビル新築
-            種別: 工事
-            階層:
-              1階:
-                東:
-                  自動制御盤:
-                    - CP-01-01
-                  空調機:
-                    AHU-01-01:
-                      VAV:
-                        - VAV101
-                        - VAV102
-                    AHU-01-02:
-                  中央監視:
-                西:
-                  空調機:
-                    - AHU-01-03
-                    - AHU-01-04
-        """.trimIndent()
     }
 }

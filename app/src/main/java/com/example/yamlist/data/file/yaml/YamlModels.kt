@@ -48,10 +48,45 @@ data class ParsedTask(
  */
 data class YamlComment(val text: String, val struck: Boolean = false)
 
-/** A single validation problem. [locator] is a line ref for syntax errors or a
- *  task path ("事前準備 > 図面確認") for semantic errors. */
-data class YamlError(val locator: String, val message: String) {
-    override fun toString(): String = "$locator: $message"
+/**
+ * A single validation problem, kept language-neutral so the screen can word it in
+ * the app's language: [kind] picks the message and [args] fill it in. [locator] is
+ * a field or task path ("事前準備 > 図面確認"); [line] is set for syntax errors.
+ */
+data class YamlError(
+    val locator: String,
+    val kind: YamlErrorKind,
+    val args: List<String> = emptyList(),
+    val line: Int? = null,
+) {
+    override fun toString(): String = "${line?.let { "line $it" } ?: locator}: $kind $args"
+}
+
+enum class YamlErrorKind {
+    FILE_TOO_LARGE,             // args: max MB
+    SYNTAX,                     // args: parser problem
+    PARSE_FAILED,               // args: detail
+    ROOT_NOT_MAPPING,
+    SCHEMA_VERSION_MISSING,
+    SCHEMA_VERSION_UNSUPPORTED, // args: found, supported
+    PROJECT_MISSING,
+    PROJECT_TITLE_MISSING,
+    DUPLICATE_UUID,             // args: uuid
+    TOO_MANY_TASKS,             // args: max, actual
+    TOO_DEEP,                   // args: max, actual
+    TASK_NOT_MAPPING,
+    TASK_TITLE_MISSING,
+    INVALID_PROGRESS_TARGET,    // args: value
+    INVALID_COMMENT,
+    ORDER_NOT_INTEGER,          // args: value
+    ORDER_NEGATIVE,             // args: value
+    INVALID_PROGRESS_MODE,      // args: value
+    INVALID_STATUS,             // args: value
+    WEIGHT_NOT_NUMBER,          // args: value
+    WEIGHT_OUT_OF_RANGE,        // args: value
+    INVALID_PLANNED_MONTH,      // args: value
+    INVALID_DATE,               // args: value
+    INVALID_DATETIME,           // args: value
 }
 
 sealed interface YamlParseResult {

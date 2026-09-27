@@ -33,6 +33,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.yamlist.R
 import com.example.yamlist.data.file.backup.BackupManager
+import com.example.yamlist.ui.common.DestinationUnavailable
+import com.example.yamlist.ui.common.UiText
+import com.example.yamlist.ui.common.resolve
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -40,14 +43,13 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.InputStream
-import java.io.IOException
 import java.io.OutputStream
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import javax.inject.Inject
 
 data class BackupUiState(
-    val message: String? = null,
+    val message: UiText? = null,
     val pendingRestore: BackupManager.ParsedArchive? = null,
     val pendingManifest: BackupManager.Manifest? = null,
     val busy: Boolean = false,
@@ -71,12 +73,16 @@ class BackupViewModel @Inject constructor(
             _state.value = _state.value.copy(busy = true, message = null)
             try {
                 withContext(Dispatchers.IO) {
-                    (openStream() ?: throw IOException("保存先を開けませんでした。"))
+                    (openStream() ?: throw DestinationUnavailable())
                         .use { backupManager.createBackup(it) }
                 }
-                _state.value = _state.value.copy(busy = false, message = "バックアップを作成しました。")
+                _state.value = _state.value.copy(busy = false, message = UiText(R.string.backup_created))
+            } catch (e: DestinationUnavailable) {
+                _state.value = _state.value.copy(busy = false, message = UiText(R.string.destination_unavailable))
             } catch (e: Exception) {
-                _state.value = _state.value.copy(busy = false, message = "バックアップに失敗しました: ${e.message}")
+                _state.value = _state.value.copy(
+                    busy = false, message = UiText(R.string.backup_failed_fmt, e.message.orEmpty()),
+                )
             }
         }
     }
@@ -91,11 +97,11 @@ class BackupViewModel @Inject constructor(
                     is BackupManager.RestoreResult.Preview ->
                         _state.value = _state.value.copy(pendingRestore = archive, pendingManifest = result.manifest, message = null)
                     is BackupManager.RestoreResult.Invalid ->
-                        _state.value = _state.value.copy(message = result.reason, pendingRestore = null)
-                    null -> _state.value = _state.value.copy(message = "ファイルを開けませんでした。")
+                        _state.value = _state.value.copy(message = invalidMessage(result), pendingRestore = null)
+                    null -> _state.value = _state.value.copy(message = UiText(R.string.file_open_failed))
                 }
             } catch (e: Exception) {
-                _state.value = _state.value.copy(message = "検証に失敗しました: ${e.message}")
+                _state.value = _state.value.copy(message = UiText(R.string.backup_inspect_failed_fmt, e.message.orEmpty()))
             }
         }
     }
@@ -107,13 +113,20 @@ class BackupViewModel @Inject constructor(
             _state.value = _state.value.copy(busy = true)
             try {
                 withContext(Dispatchers.IO) { backupManager.restore(archive) }
-                _state.value = BackupUiState(message = "復元しました。")
+                _state.value = BackupUiState(message = UiText(R.string.restore_done))
             } catch (e: Exception) {
                 // Transaction rolled back; existing data preserved (spec §26.5).
                 _state.value = _state.value.copy(busy = false, pendingRestore = null,
-                    message = "復元に失敗しました。既存データは変更されていません: ${e.message}")
+                    message = UiText(R.string.restore_failed_fmt, e.message.orEmpty()))
             }
         }
+    }
+
+    private fun invalidMessage(result: BackupManager.RestoreResult.Invalid): UiText = when (result.reason) {
+        BackupManager.InvalidReason.UNREADABLE -> UiText(R.string.backup_invalid_unreadable_fmt, result.detail)
+        BackupManager.InvalidReason.NO_MANIFEST -> UiText(R.string.backup_invalid_no_manifest)
+        BackupManager.InvalidReason.UNSUPPORTED_FORMAT -> UiText(R.string.backup_invalid_unsupported_fmt, result.detail)
+        BackupManager.InvalidReason.CHECKSUM_MISMATCH -> UiText(R.string.backup_invalid_checksum)
     }
 
     fun cancelRestore() {
@@ -172,7 +185,7 @@ fun BackupScreen(
 
             Text(stringResource(R.string.restore_note), style = MaterialTheme.typography.bodySmall)
 
-            state.message?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
+            state.message?.let { Text(it.resolve(), style = MaterialTheme.typography.bodyMedium) }
         }
     }
 

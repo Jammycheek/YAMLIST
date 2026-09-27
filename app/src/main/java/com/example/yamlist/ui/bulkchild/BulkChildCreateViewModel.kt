@@ -3,18 +3,20 @@ package com.example.yamlist.ui.bulkchild
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.yamlist.R
 import com.example.yamlist.data.repository.YamlistRepository
 import com.example.yamlist.domain.bulk.BulkTitleParser
 import com.example.yamlist.domain.model.MarkType
 import com.example.yamlist.domain.model.Task
 import com.example.yamlist.domain.model.TaskStatus
+import com.example.yamlist.ui.common.UiText
 import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 /**
  * State for the bulk child creation screen (spec §1.3–§1.8).
@@ -40,7 +42,7 @@ data class BulkChildUiState(
     val problems: List<BulkTitleParser.Problem> = emptyList(),
     val weightError: Boolean = false,
     val saving: Boolean = false,
-    val message: String? = null,
+    val message: UiText? = null,
 ) {
     val count: Int get() = titles.size
     val plannedMonthError: Boolean get() = plannedMonth.isNotBlank() &&
@@ -130,7 +132,7 @@ class BulkChildCreateViewModel @Inject constructor(
                 onDone()
             } catch (e: Exception) {
                 _state.update {
-                    it.copy(saving = false, message = e.message ?: "保存に失敗しました")
+                    it.copy(saving = false, message = UiText(R.string.save_failed))
                 }
             }
         }

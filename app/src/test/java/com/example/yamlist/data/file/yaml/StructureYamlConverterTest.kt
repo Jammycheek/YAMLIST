@@ -133,4 +133,20 @@ class StructureYamlConverterTest {
         val p = success(mapOf("案件名" to "P", "階層" to listOf("A", "", "  ")))
         assertEquals(1, p.taskCount())
     }
+
+    @Test
+    fun `english outline gets english generated labels`() {
+        val root = mapOf("kind" to "Construction", "hierarchy" to mapOf("1F" to listOf("CP-01")))
+        val project = (StructureYamlConverter.normalize(root) as Map<*, *>)["project"] as Map<*, *>
+        assertEquals("Untitled project", project["title"])
+        assertEquals("Kind: Construction", project["description"])
+    }
+
+    @Test
+    fun `japanese outline keeps japanese generated labels`() {
+        val root = mapOf("種別" to "工事", "階層" to mapOf("1階" to listOf("CP-01")))
+        val project = (StructureYamlConverter.normalize(root) as Map<*, *>)["project"] as Map<*, *>
+        assertEquals("無題プロジェクト", project["title"])
+        assertEquals("種別: 工事", project["description"])
+    }
 }

@@ -3,20 +3,22 @@ package com.example.yamlist.ui.taskdetail
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.yamlist.R
 import com.example.yamlist.data.local.entity.TaskCommentEntity
 import com.example.yamlist.data.repository.YamlistRepository
 import com.example.yamlist.domain.model.Task
 import com.example.yamlist.domain.model.TaskStatus
+import com.example.yamlist.ui.common.UiText
 import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 data class TaskDetailUi(
     val task: Task? = null,
@@ -35,7 +37,7 @@ class TaskDetailViewModel @Inject constructor(
 
     private val taskFlow = repo.observeTask(taskId)
     val deleteConfirmationCount = MutableStateFlow<Int?>(null)
-    val deleteError = MutableStateFlow<String?>(null)
+    val deleteError = MutableStateFlow<UiText?>(null)
     private var deleting = false
 
     val ui: StateFlow<TaskDetailUi> =
@@ -78,7 +80,7 @@ class TaskDetailViewModel @Inject constructor(
                 repo.deleteTaskSubtree(taskId)
             } catch (e: Exception) {
                 deleting = false
-                deleteError.value = e.message ?: "削除に失敗しました。"
+                deleteError.value = UiText(R.string.delete_failed)
                 return@launch
             }
             onDeleted()

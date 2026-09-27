@@ -17,7 +17,7 @@ import java.time.format.DateTimeFormatter
  *
  * This is a real, layout-aware renderer, not a screenshot of the app (spec §27.5):
  *  - hierarchical numbering (1, 1.1, 1.1.1 ...) and indentation,
- *  - a checkbox per task and an optional handwriting "備考" line,
+ *  - a checkbox per task and an optional handwriting notes line,
  *  - page breaks that never split a task from its note or orphan a heading (§16.3),
  *  - project name + page number on every page.
  */
@@ -29,7 +29,7 @@ class ChecklistPdfGenerator {
         val includeWeight: Boolean = false,
         val includeDueDate: Boolean = false,
         val includeHierarchyNumber: Boolean = true,
-        val noteLineWidth: Int = 260,     // width of the "備考：____" rule
+        val noteLineWidth: Int = 260,     // width of the handwriting rule after the notes label
         val landscape: Boolean = false,
         val doneStyle: DoneStyle = DoneStyle.CHECKED,
         val title: String? = null,
@@ -37,6 +37,22 @@ class ChecklistPdfGenerator {
     )
 
     enum class DoneStyle { CHECKED, STRIKETHROUGH, STATUS_TEXT, SAME_AS_TODO }
+
+    /**
+     * Words printed on the sheet, supplied from string resources so the PDF is in
+     * the app's language. Format strings take one argument each.
+     */
+    data class Labels(
+        val titleFormat: String = "%1\$s Checklist",
+        val createdFormat: String = "Created: %1\$s",
+        val pageFormat: String = "Page %1\$d",
+        val notes: String = "Notes: ",
+        val weightFormat: String = "Weight %1\$s",
+        val metaFormat: String = "(%1\$s)",
+        val doneTag: String = "[Done]",
+        val createdDate: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd"),
+        val dueDate: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd"),
+    )
 
     private data class Line(
         val number: String,
@@ -54,16 +70,18 @@ class ChecklistPdfGenerator {
         commentsByTask: Map<Long, List<String>>,
         options: Options,
         out: OutputStream,
+        labels: Labels = Labels(),
     ) {
         val forest = TaskTreeBuilder.build(tasks)
-        val lines = buildLines(forest, commentsByTask, options)
-        renderPdf(project, lines, options, out)
+        val lines = buildLines(forest, commentsByTask, options, labels)
+        renderPdf(project, lines, options, labels, out)
     }
 
     private fun buildLines(
         forest: List<TaskNode>,
         commentsByTask: Map<Long, List<String>>,
         o: Options,
+        labels: Labels,
     ): List<Line> {
         val out = ArrayList<Line>()
         fun walk(node: TaskNode, prefix: String, index: Int, depth: Int) {
@@ -74,8 +92,10 @@ class ChecklistPdfGenerator {
             val visible = o.includeDone || !done || isHeading
             if (visible) {
                 val meta = buildString {
-                    if (o.includeWeight && t.isProgressTarget && t.weight != 1.0) append("重み${trimNum(t.weight)} ")
-                    if (o.includeDueDate && t.dueDate != null) append(t.dueDate.format(DATE))
+                    if (o.includeWeight && t.isProgressTarget && t.weight != 1.0) {
+                        append(labels.weightFormat.format(trimNum(t.weight))).append(' ')
+                    }
+                    if (o.includeDueDate && t.dueDate != null) append(t.dueDate.format(labels.dueDate))
                 }.trim().ifBlank { null }
                 out.add(
                     Line(
@@ -95,7 +115,7 @@ class ChecklistPdfGenerator {
         return out
     }
 
-    private fun renderPdf(project: Project, lines: List<Line>, o: Options, out: OutputStream) {
+    private fun renderPdf(project: Project, lines: List<Line>, o: Options, labels: Labels, out: OutputStream) {
         // A4 @ 72dpi points: portrait 595x842, landscape 842x595.
         val pageW = if (o.landscape) 842 else 595
         val pageH = if (o.landscape) 595 else 842
@@ -115,6 +135,11 @@ class ChecklistPdfGenerator {
         val notePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.GRAY; textSize = 10f }
         val boxPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.BLACK; style = Paint.Style.STROKE; strokeWidth = 1f }
         val rulePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.LTGRAY; strokeWidth = 1f }
+        // Continuation lines line up under the first comment, whatever the label's width.
+        val noteLabelWidth = notePaint.measureText(labels.notes)
+        val noteIndent = buildString {
+            while (length < 40 && notePaint.measureText(toString()) < noteLabelWidth) append(' ')
+        }
 
         val pdf = PdfDocument()
         var pageNo = 0
@@ -128,12 +153,14 @@ class ChecklistPdfGenerator {
             page = pdf.startPage(info)
             canvas = page.canvas
             // Header: project name + page number on every page (§16.3).
-            val heading = o.title ?: "${project.title}　チェックシート"
+            val heading = o.title ?: labels.titleFormat.format(project.title)
             canvas.drawText(heading, marginX, marginTop - 24, titlePaint)
             if (o.showCreatedDate) {
-                canvas.drawText("作成日：${LocalDate.now().format(DATE_JP)}", marginX, marginTop - 8, subPaint)
+                val created = labels.createdFormat.format(LocalDate.now().format(labels.createdDate))
+                canvas.drawText(created, marginX, marginTop - 8, subPaint)
             }
-            canvas.drawText("Page $pageNo", pageW - marginX - 50, marginTop - 8, subPaint)
+            val pageLabel = labels.pageFormat.format(pageNo)
+            canvas.drawText(pageLabel, pageW - marginX - subPaint.measureText(pageLabel), marginTop - 8, subPaint)
             canvas.drawLine(marginX, marginTop + 2, pageW - marginX, marginTop + 2, rulePaint)
             y = marginTop + 20
         }
@@ -145,7 +172,7 @@ class ChecklistPdfGenerator {
             val noteX = x + 20
             // Each comment starts on its own line and wraps at the right margin, so
             // long or many comments never run off the page.
-            val noteLines = wrapNotes(line.notes, notePaint, pageW - marginX - noteX)
+            val noteLines = wrapNotes(line.notes, labels.notes, noteIndent, notePaint, pageW - marginX - noteX)
             val needsNote = noteLines.isNotEmpty() || (!line.isHeading && o.noteLineWidth > 0)
             val noteBlock = if (noteLines.size > 1) noteHeight + (noteLines.size - 1) * noteLineHeight else noteHeight
             val blockHeight = rowHeight + (if (needsNote) noteBlock else 0f)
@@ -168,8 +195,8 @@ class ChecklistPdfGenerator {
                 val label = listOfNotNull(
                     line.number.ifBlank { null },
                     line.title,
-                    line.meta?.let { "（$it）" },
-                    if (line.done && o.doneStyle == DoneStyle.STATUS_TEXT) "[完了]" else null,
+                    line.meta?.let { labels.metaFormat.format(it) },
+                    if (line.done && o.doneStyle == DoneStyle.STATUS_TEXT) labels.doneTag else null,
                 ).joinToString(" ")
                 val paint = if (line.done && o.doneStyle == DoneStyle.STRIKETHROUGH) strikePaint else textPaint
                 canvas.drawText(label, x + boxSize + 6, y, paint)
@@ -182,8 +209,8 @@ class ChecklistPdfGenerator {
                         canvas.drawText(text, noteX, y + i * noteLineHeight, notePaint)
                     }
                 } else {
-                    canvas.drawText("備考：", noteX, y, notePaint)
-                    val lineStartX = noteX + 34
+                    canvas.drawText(labels.notes, noteX, y, notePaint)
+                    val lineStartX = noteX + noteLabelWidth + 4
                     canvas.drawLine(lineStartX, y, lineStartX + o.noteLineWidth, y, rulePaint)
                 }
                 y += noteBlock
@@ -196,14 +223,20 @@ class ChecklistPdfGenerator {
     }
 
     /**
-     * "備考：" before the first comment, full-width indent before the others and
-     * before wrapped continuations, capped at [MAX_NOTE_LINES] lines per task.
+     * [label] before the first comment, [indent] before the others and before
+     * wrapped continuations, capped at [MAX_NOTE_LINES] lines per task.
      */
-    private fun wrapNotes(notes: List<String>, paint: Paint, maxWidth: Float): List<String> {
+    private fun wrapNotes(
+        notes: List<String>,
+        label: String,
+        indent: String,
+        paint: Paint,
+        maxWidth: Float,
+    ): List<String> {
         val lines = ArrayList<Pair<String, String>>() // prefix to body
         var truncated = false
         notes@ for ((i, note) in notes.withIndex()) {
-            var prefix = if (i == 0) NOTE_LABEL else NOTE_INDENT
+            var prefix = if (i == 0) label else indent
             var rest = note.replace('\n', ' ')
             while (rest.isNotEmpty()) {
                 if (lines.size == MAX_NOTE_LINES) {
@@ -213,7 +246,7 @@ class ChecklistPdfGenerator {
                 val take = fitLength(prefix, rest, paint, maxWidth)
                 lines.add(prefix to rest.substring(0, take))
                 rest = rest.substring(take)
-                prefix = NOTE_INDENT
+                prefix = indent
             }
         }
         if (truncated) {
@@ -239,10 +272,6 @@ class ChecklistPdfGenerator {
         if (d % 1.0 == 0.0) d.toLong().toString() else d.toString()
 
     companion object {
-        private val DATE = DateTimeFormatter.ofPattern("yyyy/MM/dd")
-        private val DATE_JP = DateTimeFormatter.ofPattern("yyyy年M月d日")
-        private const val NOTE_LABEL = "備考："
-        private const val NOTE_INDENT = "　　　"
         private const val MAX_NOTE_LINES = 12
         private const val ELLIPSIS = "…"
     }
