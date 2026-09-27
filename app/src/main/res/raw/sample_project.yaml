@@ -1,0 +1,20 @@
+schema_version: 1
+project:
+  title: "Site A"
+  description: "HVAC automatic control commissioning"
+  progress_mode: "weight"
+  tasks:
+    - title: "Preparation"
+      tasks:
+        - title: "Drawing check"
+          weight: 2
+          mark: "important"
+        - title: "I/O list check"
+          weight: 3
+    - title: "On-site work"
+      tasks:
+        - title: "Panel check"
+          weight: 2
+        - title: "Automatic control test"
+          weight: 8
+          mark: "warning"

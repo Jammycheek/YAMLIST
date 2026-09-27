@@ -1,9 +1,12 @@
 package com.example.yamlist.data
 
+import android.content.Context
+import com.example.yamlist.R
 import com.example.yamlist.data.local.entity.AppSettingEntity
 import com.example.yamlist.data.local.entity.ProjectEntity
 import com.example.yamlist.data.local.entity.TaskEntity
 import com.example.yamlist.data.repository.YamlistRepository
+import dagger.hilt.android.qualifiers.ApplicationContext
 import java.time.LocalDateTime
 import java.util.UUID
 import javax.inject.Inject
@@ -16,6 +19,9 @@ import javax.inject.Singleton
 @Singleton
 class SeedInitializer @Inject constructor(
     private val repo: YamlistRepository,
+    // Application resources follow the device language, which is what a first
+    // launch has (the in-app language override can't have been set yet).
+    @ApplicationContext private val context: Context,
 ) {
     companion object { private const val SEED_KEY = "seeded_v1" }
 
@@ -31,8 +37,8 @@ class SeedInitializer @Inject constructor(
             val projectId = repo.projects.insert(
                 ProjectEntity(
                     uuid = UUID.randomUUID().toString(),
-                    title = "サンプル現場 / Sample Site",
-                    description = "初回サンプル / First-launch sample",
+                    title = context.getString(R.string.seed_project_title),
+                    description = context.getString(R.string.seed_project_description),
                     progressMode = "BOTH",
                     displayOrder = 1,
                     createdAt = now, updatedAt = now,
@@ -51,14 +57,15 @@ class SeedInitializer @Inject constructor(
                         createdAt = now, updatedAt = now,
                     )
                 )
-            val prep = addTask("事前準備 / Preparation", null)
-            addTask("図面確認 / Drawing check", prep, 2.0)
-            addTask("工程確認 / Schedule check", prep, 1.0)
-            val onsite = addTask("現場作業 / On-site work", null)
-            addTask("盤チェック / Panel check", onsite, 2.0)
-            addTask("総合試験 / Overall test", onsite, 3.0)
-            val closeout = addTask("完了処理 / Close-out", null)
-            addTask("報告書作成 / Report", closeout, 1.0)
+            fun text(id: Int) = context.getString(id)
+            val prep = addTask(text(R.string.seed_preparation), null)
+            addTask(text(R.string.seed_drawing_check), prep, 2.0)
+            addTask(text(R.string.seed_schedule_check), prep, 1.0)
+            val onsite = addTask(text(R.string.seed_onsite_work), null)
+            addTask(text(R.string.seed_panel_check), onsite, 2.0)
+            addTask(text(R.string.seed_overall_test), onsite, 3.0)
+            val closeout = addTask(text(R.string.seed_closeout), null)
+            addTask(text(R.string.seed_report), closeout, 1.0)
 
             repo.settingDao.put(AppSettingEntity(SEED_KEY, "true"))
         }

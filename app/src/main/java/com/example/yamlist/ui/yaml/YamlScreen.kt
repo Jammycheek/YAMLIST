@@ -122,6 +122,10 @@ private fun ImportTab(
     onOpenFile: () -> Unit,
     onImported: () -> Unit,
 ) {
+    val context = LocalContext.current
+    fun readRaw(id: Int): String =
+        context.resources.openRawResource(id).bufferedReader(Charsets.UTF_8).use { it.readText() }
+
     // Local TextFieldValue so helper buttons can insert at the caret.
     var editorValue by remember { mutableStateOf(TextFieldValue(state.inputText)) }
     var editorFocused by remember { mutableStateOf(false) }
@@ -154,8 +158,10 @@ private fun ImportTab(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 OutlinedButton(onClick = onOpenFile) { Text(stringResource(R.string.open_file)) }
-                OutlinedButton(onClick = { viewModel.loadSample() }) { Text(stringResource(R.string.load_sample)) }
-                OutlinedButton(onClick = { viewModel.loadStructureSample() }) {
+                OutlinedButton(onClick = { viewModel.loadSample(readRaw(R.raw.sample_project)) }) {
+                    Text(stringResource(R.string.load_sample))
+                }
+                OutlinedButton(onClick = { viewModel.loadSample(readRaw(R.raw.sample_structure)) }) {
                     Text(stringResource(R.string.load_structure_sample))
                 }
             }
@@ -181,7 +187,7 @@ private fun ImportTab(
                 Text(stringResource(R.string.errors), style = MaterialTheme.typography.titleSmall,
                     color = MaterialTheme.colorScheme.error)
                 state.errors.forEach { err ->
-                    Text("• ${err.locator}: ${err.message}", color = MaterialTheme.colorScheme.error,
+                    Text("• ${yamlErrorLocation(err)}: ${yamlErrorMessage(err)}", color = MaterialTheme.colorScheme.error,
                         style = MaterialTheme.typography.bodySmall)
                 }
             }
@@ -204,7 +210,9 @@ private fun ImportTab(
                     Text(stringResource(R.string.do_import))
                 }
             }
-            state.message?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+            state.importFailure?.let {
+                Text(stringResource(R.string.import_failed_fmt, it), color = MaterialTheme.colorScheme.error)
+            }
         }
         if (editorFocused) YamlInputHelperBar(onInsert = ::insert)
     }

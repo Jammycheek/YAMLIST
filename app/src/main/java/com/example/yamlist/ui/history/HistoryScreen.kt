@@ -18,6 +18,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -31,22 +32,22 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import java.time.LocalDate
 import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
 import javax.inject.Inject
 
 @HiltViewModel
 class HistoryViewModel @Inject constructor(repo: YamlistRepository) : ViewModel() {
-    val grouped: StateFlow<List<Pair<String, List<Task>>>> =
+    val grouped: StateFlow<List<Pair<LocalDate, List<Task>>>> =
         repo.observeCompletedHistory().map { tasks ->
             tasks.filter { it.completedAt != null }
                 .groupBy { it.completedAt!!.toLocalDate() }
                 .toSortedMap(reverseOrder())
                 .map { (date, list) ->
-                    date.format(DATE) to list.sortedByDescending { it.completedAt }
+                    date to list.sortedByDescending { it.completedAt }
                 }
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
-
-    companion object { private val DATE = DateTimeFormatter.ofPattern("yyyy年M月d日") }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -56,7 +57,9 @@ fun HistoryScreen(
     viewModel: HistoryViewModel = hiltViewModel(),
 ) {
     val grouped by viewModel.grouped.collectAsState()
-    val timeFmt = DateTimeFormatter.ofPattern("HH:mm")
+    val locale = LocalConfiguration.current.locales[0]
+    val dateFmt = DateTimeFormatter.ofLocalizedDate(FormatStyle.LONG).withLocale(locale)
+    val timeFmt = DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT).withLocale(locale)
 
     Scaffold(
         topBar = {
@@ -75,14 +78,14 @@ fun HistoryScreen(
             contentPadding = PaddingValues(16.dp),
         ) {
             grouped.forEach { (date, tasks) ->
-                item(key = date) {
-                    Text(date, style = MaterialTheme.typography.titleSmall,
+                item(key = date.toString()) {
+                    Text(date.format(dateFmt), style = MaterialTheme.typography.titleSmall,
                         modifier = Modifier.padding(top = 12.dp, bottom = 4.dp))
                 }
                 items(tasks.size, key = { tasks[it].id }) { i ->
                     val t = tasks[i]
                     Column(Modifier.padding(vertical = 4.dp)) {
-                        Text("${t.completedAt!!.format(timeFmt)}　${t.title}",
+                        Text("${t.completedAt!!.format(timeFmt)}  ${t.title}",
                             style = MaterialTheme.typography.bodyMedium)
                     }
                 }

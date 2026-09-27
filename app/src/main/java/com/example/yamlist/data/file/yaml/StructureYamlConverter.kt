@@ -74,15 +74,19 @@ object StructureYamlConverter {
     }
 
     private fun convert(root: Map<*, *>): Map<String, Any?> {
-        val title = firstStringOf(root, TITLE_KEYS) ?: "無題プロジェクト"
+        // Generated text (fallback title, kind label) follows the outline's own
+        // language: Japanese when any key is written in Japanese.
+        val japanese = root.keys.any { key -> key?.toString()?.any { it in '\u3040'..'\u9fff' } == true }
+        val title = firstStringOf(root, TITLE_KEYS) ?: if (japanese) "無題プロジェクト" else "Untitled project"
         val kind = firstStringOf(root, KIND_KEYS)
         val explicitDescription = firstStringOf(root, DESCRIPTION_KEYS)
+        val kindLabel = kind?.let { if (japanese) "種別: $it" else "Kind: $it" }
 
         val description = when {
-            explicitDescription != null && kind != null -> "$explicitDescription（種別: $kind）"
+            explicitDescription != null && kindLabel != null ->
+                if (japanese) "$explicitDescription（$kindLabel）" else "$explicitDescription ($kindLabel)"
             explicitDescription != null -> explicitDescription
-            kind != null -> "種別: $kind"
-            else -> null
+            else -> kindLabel
         }
 
         // Prefer an explicit tree key; otherwise treat every remaining key as structure.

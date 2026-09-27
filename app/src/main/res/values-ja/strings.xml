@@ -199,4 +199,68 @@
     <string name="weight_sheet_discard_title">重みの変更を破棄しますか？</string>
     <string name="weight_sheet_discard_body">この画面で変更した重みはまだ保存されていません。</string>
     <string name="weight_sheet_discard">破棄</string>
+    <!-- v0.7: English support (messages formerly hard-coded in Japanese) -->
+    <!-- YAML validation errors -->
+    <string name="yaml_err_line_fmt">%1$d行目</string>
+    <string name="yaml_err_file_too_large">YAMLファイルが上限(%1$s MB)を超えています。</string>
+    <string name="yaml_err_syntax">YAML構文エラー: %1$s</string>
+    <string name="yaml_err_parse_failed">YAMLの解析に失敗しました: %1$s</string>
+    <string name="yaml_err_root_not_mapping">ルートはマッピング（キー: 値）である必要があります。</string>
+    <string name="yaml_err_schema_version_missing">schema_version が必要です。</string>
+    <string name="yaml_err_schema_version_unsupported">未対応の schema_version です(%1$s)。対応: %2$s</string>
+    <string name="yaml_err_project_missing">project がありません。</string>
+    <string name="yaml_err_project_title_missing">project.title がありません。</string>
+    <string name="yaml_err_duplicate_uuid">UUID が重複しています: %1$s</string>
+    <string name="yaml_err_too_many_tasks">タスク数が上限(%1$s)を超えています(%2$s)。</string>
+    <string name="yaml_err_too_deep">階層が上限(%1$s)を超えています(%2$s)。</string>
+    <string name="yaml_err_task_not_mapping">タスクはマッピング（キー: 値）である必要があります。</string>
+    <string name="yaml_err_task_title_missing">タスクの title がありません。</string>
+    <string name="yaml_err_invalid_progress_target">progress_target は true/false で指定してください: %1$s</string>
+    <string name="yaml_err_invalid_comment">コメントは文字列で指定してください（「:」を含む場合は \"...\" で囲んでください）。</string>
+    <string name="yaml_err_order_not_integer">order は整数である必要があります: %1$s</string>
+    <string name="yaml_err_order_negative">order には0以上の整数を指定してください: %1$s</string>
+    <string name="yaml_err_invalid_progress_mode">progress_mode は count/weight/both のいずれかです: %1$s</string>
+    <string name="yaml_err_invalid_status">status は todo/done/hold のいずれかです: %1$s</string>
+    <string name="yaml_err_weight_not_number">weight は数値である必要があります: %1$s</string>
+    <string name="yaml_err_weight_out_of_range">weight には0以上9999以下の数値を指定してください: %1$s</string>
+    <string name="yaml_err_invalid_planned_month">planned_month は YYYY-MM 形式です: %1$s</string>
+    <string name="yaml_err_invalid_date">日付形式が不正です(YYYY-MM-DD): %1$s</string>
+    <string name="yaml_err_invalid_datetime">completed_at は ISO 8601 形式です: %1$s</string>
+    <string name="import_failed_fmt">インポートに失敗しました: %1$s</string>
+    <!-- Messages -->
+    <string name="destination_unavailable">保存先を開けませんでした。</string>
+    <string name="file_open_failed">ファイルを開けませんでした。</string>
+    <string name="backup_created">バックアップを作成しました。</string>
+    <string name="backup_failed_fmt">バックアップに失敗しました: %1$s</string>
+    <string name="backup_inspect_failed_fmt">検証に失敗しました: %1$s</string>
+    <string name="backup_invalid_unreadable_fmt">ZIPを読み取れませんでした: %1$s</string>
+    <string name="backup_invalid_no_manifest">manifest.json がありません。</string>
+    <string name="backup_invalid_unsupported_fmt">未対応のバックアップ形式です(%1$s)。</string>
+    <string name="backup_invalid_checksum">チェックサムが一致しません。ファイルが破損している可能性があります。</string>
+    <string name="restore_done">復元しました。</string>
+    <string name="restore_failed_fmt">復元に失敗しました。既存データは変更されていません: %1$s</string>
+    <string name="pdf_saved">PDFを保存しました。</string>
+    <string name="pdf_failed_fmt">PDF生成に失敗しました: %1$s</string>
+    <string name="delete_failed">削除に失敗しました。</string>
+    <string name="save_failed">保存に失敗しました。</string>
+    <string name="field_label_fmt">%1$s：</string>
+    <!-- PDF checklist text -->
+    <string name="pdf_title_fmt">%1$s　チェックシート</string>
+    <string name="pdf_created_fmt">作成日：%1$s</string>
+    <string name="pdf_page_fmt">%1$d ページ</string>
+    <string name="pdf_notes_label">備考：</string>
+    <string name="pdf_weight_fmt">重み%1$s</string>
+    <string name="pdf_meta_fmt">（%1$s）</string>
+    <string name="pdf_done_tag">[完了]</string>
+    <!-- First-launch sample project -->
+    <string name="seed_project_title">サンプル現場</string>
+    <string name="seed_project_description">初回サンプル</string>
+    <string name="seed_preparation">事前準備</string>
+    <string name="seed_drawing_check">図面確認</string>
+    <string name="seed_schedule_check">工程確認</string>
+    <string name="seed_onsite_work">現場作業</string>
+    <string name="seed_panel_check">盤チェック</string>
+    <string name="seed_overall_test">総合試験</string>
+    <string name="seed_closeout">完了処理</string>
+    <string name="seed_report">報告書作成</string>
 </resources>

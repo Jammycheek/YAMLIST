@@ -190,10 +190,10 @@ class YamlistRepository @Inject constructor(
         template: Task,
     ): List<Long> = withTransaction {
         val parent = taskDao.getById(parentId)
-            ?: throw IllegalArgumentException("親タスクが見つかりません。")
-        if (parent.isDeleted) throw IllegalStateException("親タスクは削除済みです。")
+            ?: throw IllegalArgumentException("Parent task not found.")
+        if (parent.isDeleted) throw IllegalStateException("Parent task is deleted.")
         if (parent.projectId != template.projectId) {
-            throw IllegalArgumentException("親タスクが別のプロジェクトに属しています。")
+            throw IllegalArgumentException("Parent task belongs to another project.")
         }
 
         val timestamp = now()

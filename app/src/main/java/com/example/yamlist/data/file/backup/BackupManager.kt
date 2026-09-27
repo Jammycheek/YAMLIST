@@ -44,7 +44,7 @@ class BackupManager @Inject constructor(
 
     companion object {
         const val BACKUP_FORMAT_VERSION = 1
-        const val APP_VERSION = "0.5"
+        const val APP_VERSION = "0.7"
         const val FILE_MANIFEST = "manifest.json"
         const val FILE_PROJECTS = "projects.yaml"
         const val FILE_COMMENTS = "comments.json"
@@ -107,26 +107,29 @@ class BackupManager @Inject constructor(
 
     sealed interface RestoreResult {
         data class Preview(val manifest: Manifest) : RestoreResult
-        data class Invalid(val reason: String) : RestoreResult
+        /** [detail] is the version for UNSUPPORTED_FORMAT, the error text for UNREADABLE. */
+        data class Invalid(val reason: InvalidReason, val detail: String = "") : RestoreResult
     }
+
+    enum class InvalidReason { UNREADABLE, NO_MANIFEST, UNSUPPORTED_FORMAT, CHECKSUM_MISMATCH }
 
     /** Reads & validates the archive without writing anything (spec §17.3 pre-checks). */
     fun inspect(input: InputStream): Pair<RestoreResult, ParsedArchive?> {
         val archive = try {
             readArchive(input)
         } catch (e: Exception) {
-            return RestoreResult.Invalid("ZIPを読み取れませんでした: ${e.message}") to null
+            return RestoreResult.Invalid(InvalidReason.UNREADABLE, e.message.orEmpty()) to null
         }
         val manifest = archive.manifest
-            ?: return RestoreResult.Invalid("manifest.json がありません。") to null
+            ?: return RestoreResult.Invalid(InvalidReason.NO_MANIFEST) to null
         if (manifest.formatVersion > BACKUP_FORMAT_VERSION) {
-            return RestoreResult.Invalid("未対応のバックアップ形式です(${manifest.formatVersion})。") to null
+            return RestoreResult.Invalid(InvalidReason.UNSUPPORTED_FORMAT, "${manifest.formatVersion}") to null
         }
         val recomputed = sha256(
             archive.projectsYaml.toByteArray() + archive.commentsJson.toByteArray() + archive.settingsJson.toByteArray()
         )
         if (recomputed != manifest.checksumSha256) {
-            return RestoreResult.Invalid("チェックサムが一致しません。ファイルが破損している可能性があります。") to null
+            return RestoreResult.Invalid(InvalidReason.CHECKSUM_MISMATCH) to null
         }
         return RestoreResult.Preview(manifest) to archive
     }

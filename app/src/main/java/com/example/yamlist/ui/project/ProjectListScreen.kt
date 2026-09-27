@@ -255,7 +255,7 @@ private fun GroupHeader(
                 modifier = Modifier.weight(1f, fill = false).padding(start = 4.dp),
             )
             Text(
-                "（${section.cards.size}）",
+                " (${section.cards.size})",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.weight(1f),
@@ -399,7 +399,7 @@ private fun MoveToGroupDialog(
                 groups.forEach { g ->
                     GroupChoice(g.title, currentGroupId == g.id) { onSelect(g.id) }
                 }
-                GroupChoice("＋ " + stringResource(R.string.new_group), false, onCreateGroup)
+                GroupChoice("+ " + stringResource(R.string.new_group), false, onCreateGroup)
             }
         },
         confirmButton = {},

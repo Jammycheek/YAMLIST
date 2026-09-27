@@ -1,0 +1,20 @@
+schema_version: 1
+project:
+  title: "現場A"
+  description: "空調自動制御試運転"
+  progress_mode: "weight"
+  tasks:
+    - title: "事前準備"
+      tasks:
+        - title: "図面確認"
+          weight: 2
+          mark: "important"
+        - title: "I/Oリスト確認"
+          weight: 3
+    - title: "現場作業"
+      tasks:
+        - title: "盤チェック"
+          weight: 2
+        - title: "自動制御試験"
+          weight: 8
+          mark: "warning"

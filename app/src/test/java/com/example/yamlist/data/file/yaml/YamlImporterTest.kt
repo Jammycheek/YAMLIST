@@ -80,7 +80,7 @@ class YamlImporterTest {
                 "tasks" to listOf(mapOf("title" to "T", "status" to "sideways")),
             ))
         )
-        assertTrue(errorsOf(r).any { it.message.contains("status") })
+        assertTrue(errorsOf(r).any { it.kind == YamlErrorKind.INVALID_STATUS })
     }
 
     @Test
@@ -91,7 +91,7 @@ class YamlImporterTest {
                 "tasks" to listOf(mapOf("title" to "T", "weight" to -1)),
             ))
         )
-        assertTrue(errorsOf(r).any { it.message.contains("weight") })
+        assertTrue(errorsOf(r).any { it.kind == YamlErrorKind.WEIGHT_OUT_OF_RANGE })
     }
 
     @Test
@@ -102,7 +102,7 @@ class YamlImporterTest {
                 "tasks" to listOf(mapOf("title" to "T", "planned_month" to "2025/01")),
             ))
         )
-        assertTrue(errorsOf(r).any { it.message.contains("planned_month") })
+        assertTrue(errorsOf(r).any { it.kind == YamlErrorKind.INVALID_PLANNED_MONTH })
     }
 
     @Test
@@ -116,7 +116,7 @@ class YamlImporterTest {
                 ),
             ))
         )
-        assertTrue(errorsOf(r).any { it.message.contains("UUID") })
+        assertTrue(errorsOf(r).any { it.kind == YamlErrorKind.DUPLICATE_UUID && it.args == listOf("dup") })
     }
 
     @Test
@@ -187,7 +187,7 @@ class YamlImporterTest {
         val r = YamlImporter.mapAndValidate(
             root(project = mapOf("title" to "P", "tasks" to listOf(mapOf("title" to "A", "order" to -1))))
         )
-        assertTrue(errorsOf(r).any { it.message.contains("order") })
+        assertTrue(errorsOf(r).any { it.kind == YamlErrorKind.ORDER_NEGATIVE })
     }
 
     @Test
@@ -195,7 +195,7 @@ class YamlImporterTest {
         val r = YamlImporter.mapAndValidate(
             root(project = mapOf("title" to "P", "tasks" to listOf(mapOf("title" to "A", "order" to "abc"))))
         )
-        assertTrue(errorsOf(r).any { it.message.contains("order") })
+        assertTrue(errorsOf(r).any { it.kind == YamlErrorKind.ORDER_NOT_INTEGER })
     }
 
     @Test
@@ -203,5 +203,22 @@ class YamlImporterTest {
         val text = "schema_version: 1\nproject: : : oops"
         val r = YamlImporter.parse(text)
         assertTrue(r is YamlParseResult.Failure)
+    }
+
+    @Test
+    fun `syntax error carries its line and a language neutral kind`() {
+        val r = YamlImporter.parse("schema_version: 1\nproject:\n  title: [unclosed")
+        val error = errorsOf(r).single()
+        assertEquals(YamlErrorKind.SYNTAX, error.kind)
+        assertTrue(error.line != null && error.line!! >= 3)
+    }
+
+    @Test
+    fun `untitled task path has no language specific label`() {
+        val r = YamlImporter.mapAndValidate(
+            root(project = mapOf("title" to "P", "tasks" to listOf(mapOf("status" to "done"))))
+        )
+        val error = errorsOf(r).single { it.kind == YamlErrorKind.TASK_TITLE_MISSING }
+        assertEquals("P > (#1)", error.locator)
     }
 }

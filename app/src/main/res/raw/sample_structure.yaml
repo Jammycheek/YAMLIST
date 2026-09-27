@@ -1,0 +1,18 @@
+title: Riverside Office Tower
+kind: Construction
+hierarchy:
+  1F:
+    East:
+      Control panel:
+        - CP-01-01
+      Air handling units:
+        AHU-01-01:
+          VAV:
+            - VAV101
+            - VAV102
+        AHU-01-02:
+      Central monitoring:
+    West:
+      Air handling units:
+        - AHU-01-03
+        - AHU-01-04
