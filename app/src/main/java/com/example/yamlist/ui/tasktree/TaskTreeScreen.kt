@@ -14,12 +14,15 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Print
@@ -29,6 +32,8 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -47,6 +52,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.text.style.TextOverflow
@@ -60,6 +66,8 @@ import com.example.yamlist.domain.model.TaskStatus
 import com.example.yamlist.ui.common.MarkChip
 import com.example.yamlist.ui.common.NumberColorBadge
 import com.example.yamlist.ui.common.ProgressBar
+import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -82,6 +90,12 @@ fun TaskTreeScreen(
     var topMenu by remember { mutableStateOf(false) }
     var deleteTarget by remember { mutableStateOf<Pair<Long, Int>?>(null) }
     var promoteTarget by remember { mutableStateOf<Long?>(null) }
+    val locale = LocalConfiguration.current.locales[0]
+    // null while the dates are hidden, so rows only need to check this one value.
+    val completionDateFormat = remember(locale, state.showCompletionDate) {
+        if (state.showCompletionDate) DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM).withLocale(locale)
+        else null
+    }
 
     Scaffold(
         topBar = {
@@ -123,6 +137,8 @@ fun TaskTreeScreen(
                 onCollapseAll = viewModel::collapseAll,
                 onExpandOne = viewModel::expandOneLevel,
                 onCollapseOne = viewModel::collapseOneLevel,
+                showCompletionDate = state.showCompletionDate,
+                onToggleCompletionDate = viewModel::toggleCompletionDate,
             )
             LazyColumn(
                 Modifier.fillMaxSize(),
@@ -131,6 +147,7 @@ fun TaskTreeScreen(
                 items(state.rows, key = { it.node.task.id }) { row ->
                     TaskRow(
                         row = row,
+                        completionDateFormat = completionDateFormat,
                         onToggleDone = { viewModel.toggleDone(row.node.task.id) },
                         onToggleSubtreeDone = { allDone ->
                             viewModel.toggleSubtreeDone(row.node.task.id, allDone)
@@ -228,27 +245,45 @@ private fun ExpandControls(
     onCollapseAll: () -> Unit,
     onExpandOne: () -> Unit,
     onCollapseOne: () -> Unit,
+    showCompletionDate: Boolean,
+    onToggleCompletionDate: () -> Unit,
 ) {
     Row(
         Modifier
             .fillMaxWidth()
-            .padding(horizontal = 6.dp),
-        horizontalArrangement = Arrangement.spacedBy(2.dp),
+            .padding(start = 6.dp, end = 12.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        val padding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
-        TextButton(onClick = onExpandAll, contentPadding = padding) {
-            Text(stringResource(R.string.expand_all), style = MaterialTheme.typography.labelMedium)
+        // The four step buttons scroll on narrow screens, so the toggle at the right
+        // end always stays on screen.
+        Row(
+            Modifier.weight(1f).horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(2.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            val padding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+            TextButton(onClick = onExpandAll, contentPadding = padding) {
+                Text(stringResource(R.string.expand_all), style = MaterialTheme.typography.labelMedium)
+            }
+            TextButton(onClick = onCollapseAll, contentPadding = padding) {
+                Text(stringResource(R.string.collapse_all), style = MaterialTheme.typography.labelMedium)
+            }
+            TextButton(onClick = onExpandOne, contentPadding = padding) {
+                Text(stringResource(R.string.expand_one_level), style = MaterialTheme.typography.labelMedium)
+            }
+            TextButton(onClick = onCollapseOne, contentPadding = padding) {
+                Text(stringResource(R.string.collapse_one_level), style = MaterialTheme.typography.labelMedium)
+            }
         }
-        TextButton(onClick = onCollapseAll, contentPadding = padding) {
-            Text(stringResource(R.string.collapse_all), style = MaterialTheme.typography.labelMedium)
-        }
-        TextButton(onClick = onExpandOne, contentPadding = padding) {
-            Text(stringResource(R.string.expand_one_level), style = MaterialTheme.typography.labelMedium)
-        }
-        TextButton(onClick = onCollapseOne, contentPadding = padding) {
-            Text(stringResource(R.string.collapse_one_level), style = MaterialTheme.typography.labelMedium)
-        }
+        FilterChip(
+            selected = showCompletionDate,
+            onClick = onToggleCompletionDate,
+            label = { Text(stringResource(R.string.show_completion_date), style = MaterialTheme.typography.labelMedium) },
+            leadingIcon = if (showCompletionDate) {
+                { Icon(Icons.Default.Done, contentDescription = null, modifier = Modifier.size(FilterChipDefaults.IconSize)) }
+            } else null,
+        )
     }
 }
 
@@ -256,6 +291,7 @@ private fun ExpandControls(
 @Composable
 private fun TaskRow(
     row: TreeRow,
+    completionDateFormat: DateTimeFormatter?,
     onToggleDone: () -> Unit,
     onToggleSubtreeDone: (allDone: Boolean) -> Unit,
     onToggleExpand: () -> Unit,
@@ -348,15 +384,18 @@ private fun TaskRow(
             }
             // Resolve composable strings before entering the plain buildString lambda.
             val parentLabel = if (!row.isLeaf) parentStateLabel(row.parentState) else ""
-            val holdLabel = stringResource(R.string.status_hold)
             val weightLabel = if (task.weight != 1.0 && task.isProgressTarget)
                 stringResource(R.string.weight_fmt, trimWeight(task.weight)) else ""
+            val completedLabel = if (completionDateFormat != null && task.status == TaskStatus.DONE) {
+                task.completedAt?.let {
+                    stringResource(R.string.completed_on_fmt, it.toLocalDate().format(completionDateFormat))
+                }
+            } else null
             val sub = buildString {
                 if (!row.isLeaf) {
                     append(parentLabel)
                     if (row.progress.hasTargets) append("  ${row.progress.weightPercent}%")
                 } else {
-                    if (task.status == TaskStatus.HOLD) append(holdLabel)
                     if (weightLabel.isNotEmpty()) {
                         if (isNotEmpty()) append("  ")
                         append(weightLabel)
@@ -365,6 +404,10 @@ private fun TaskRow(
                 task.dueDate?.let {
                     if (isNotEmpty()) append("  ")
                     append(it.toString())
+                }
+                completedLabel?.let {
+                    if (isNotEmpty()) append("  ")
+                    append(it)
                 }
             }
             if (sub.isNotBlank()) {
@@ -398,8 +441,6 @@ private fun TaskRow(
                         onClick = { menu = false; onBulk(TaskStatus.DONE) })
                     DropdownMenuItem(text = { Text(stringResource(R.string.mark_all_todo)) },
                         onClick = { menu = false; onBulk(TaskStatus.TODO) })
-                    DropdownMenuItem(text = { Text(stringResource(R.string.mark_all_hold)) },
-                        onClick = { menu = false; onBulk(TaskStatus.HOLD) })
                 }
                 DropdownMenuItem(text = { Text(stringResource(R.string.delete)) },
                     onClick = { menu = false; onDelete() })

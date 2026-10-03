@@ -313,7 +313,8 @@ object YamlImporter {
         return when ((value as? String)?.lowercase()) {
             "todo" -> TaskStatus.TODO
             "done" -> TaskStatus.DONE
-            "hold" -> TaskStatus.HOLD
+            // The on-hold status was removed; files exported earlier may still carry it.
+            "hold" -> TaskStatus.TODO
             else -> {
                 errors.add(YamlError(path, YamlErrorKind.INVALID_STATUS, listOf("$value")))
                 TaskStatus.TODO

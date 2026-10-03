@@ -169,6 +169,10 @@ interface TaskDao {
     @Query("UPDATE tasks SET displayOrder = :order, updatedAt = :now WHERE id = :id")
     suspend fun setOrder(id: Long, order: Long, now: java.time.LocalDateTime)
 
+    /** The on-hold status no longer exists; rows saved with it become plain to-do tasks. */
+    @Query("UPDATE tasks SET status = 'TODO' WHERE status NOT IN ('TODO', 'DONE')")
+    suspend fun normalizeLegacyStatus(): Int
+
     @Query("UPDATE tasks SET colorCode = :colorCode, updatedAt = :now WHERE id = :id")
     suspend fun setColor(id: Long, colorCode: String?, now: java.time.LocalDateTime)
 
@@ -300,6 +304,9 @@ interface AppSettingDao {
 
     @Query("SELECT value FROM app_settings WHERE `key` = :key")
     suspend fun get(key: String): String?
+
+    @Query("SELECT value FROM app_settings WHERE `key` = :key")
+    fun observeValue(key: String): Flow<String?>
 
     @Query("SELECT * FROM app_settings")
     suspend fun getAllOnce(): List<AppSettingEntity>

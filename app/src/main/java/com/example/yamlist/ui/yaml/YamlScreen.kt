@@ -42,11 +42,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.platform.ClipboardManager
-import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
@@ -62,7 +59,6 @@ fun YamlScreen(
 ) {
     val state by viewModel.state.collectAsState()
     val context = LocalContext.current
-    val clipboard: ClipboardManager = LocalClipboardManager.current
     var tab by remember { mutableIntStateOf(if (viewModel.projectId > 0) 1 else 0) }
 
     val openDoc = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
@@ -106,7 +102,6 @@ fun YamlScreen(
                 0 -> ImportTab(state, viewModel, onOpenFile = { openDoc.launch(arrayOf("*/*")) }, onImported = onBack)
                 else -> ExportTab(
                     state = state,
-                    onCopy = { clipboard.setText(AnnotatedString(state.exportText)) },
                     onSaveFile = { createDoc.launch("yamlist.yaml") },
                 )
             }
@@ -242,22 +237,13 @@ private fun YamlInputHelperBar(onInsert: (String) -> Unit) {
 }
 
 @Composable
-private fun ExportTab(state: YamlUiState, onCopy: () -> Unit, onSaveFile: () -> Unit) {
-    Column(
-        Modifier.fillMaxSize().padding(16.dp).verticalScroll(rememberScrollState()),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedButton(onClick = onCopy) { Text(stringResource(R.string.copy)) }
-            OutlinedButton(onClick = onSaveFile) { Text(stringResource(R.string.save_file)) }
+private fun ExportTab(state: YamlUiState, onSaveFile: () -> Unit) {
+    Column(Modifier.fillMaxSize().padding(16.dp)) {
+        // The YAML is built in the background; with no preview on screen, wait for it
+        // so an empty file is never written.
+        OutlinedButton(onClick = onSaveFile, enabled = state.exportText.isNotEmpty()) {
+            Text(stringResource(R.string.save_file))
         }
-        OutlinedTextField(
-            value = state.exportText,
-            onValueChange = {},
-            readOnly = true,
-            modifier = Modifier.fillMaxWidth(),
-            minLines = 12,
-        )
     }
 }
 

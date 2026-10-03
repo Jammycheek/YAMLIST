@@ -19,6 +19,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Archive
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.AlertDialog
@@ -84,6 +85,9 @@ fun ProjectListScreen(
             TopAppBar(
                 title = { Text(stringResource(R.string.app_name)) },
                 actions = {
+                    IconButton(onClick = onOpenHistory) {
+                        Icon(Icons.Default.History, contentDescription = stringResource(R.string.history))
+                    }
                     IconButton(onClick = onOpenArchive) {
                         Icon(Icons.Default.Archive, contentDescription = stringResource(R.string.archive_list))
                     }
@@ -95,11 +99,9 @@ fun ProjectListScreen(
                             onClick = { menuOpen = false; nameRequest = GroupNameRequest.Create(null) })
                         DropdownMenuItem(text = { Text(stringResource(R.string.yaml_io)) },
                             onClick = { menuOpen = false; onOpenYaml() })
-                        DropdownMenuItem(text = { Text(stringResource(R.string.history)) },
-                            onClick = { menuOpen = false; onOpenHistory() })
                         DropdownMenuItem(text = { Text(stringResource(R.string.backup_restore)) },
                             onClick = { menuOpen = false; onOpenBackup() })
-                        DropdownMenuItem(text = { Text(stringResource(R.string.settings)) },
+                        DropdownMenuItem(text = { Text(stringResource(R.string.language)) },
                             onClick = { menuOpen = false; onOpenSettings() })
                     }
                 },

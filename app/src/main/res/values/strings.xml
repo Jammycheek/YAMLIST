@@ -9,14 +9,12 @@
     <string name="edit">Edit</string>
     <string name="delete">Delete</string>
     <string name="archive">Archive</string>
-    <string name="copy">Copy</string>
     <string name="menu">Menu</string>
 
     <!-- Top-level menu / navigation -->
     <string name="yaml_io">YAML import / export</string>
     <string name="history">Completed history</string>
     <string name="backup_restore">Backup &amp; restore</string>
-    <string name="settings">Settings</string>
 
     <!-- Project list (SCR-01) -->
     <string name="new_project">New project</string>
@@ -42,7 +40,6 @@
     <string name="add_child_task">Add child task</string>
     <string name="mark_all_done">Mark all done</string>
     <string name="mark_all_todo">Mark all to-do</string>
-    <string name="mark_all_hold">Mark all on hold</string>
     <string name="delete_with_children_fmt">Delete this task and %1$d descendant task(s)?</string>
     <string name="depth_warning">Nesting is deep. Consider flattening for readability.</string>
     <string name="expand_collapse">Expand / collapse</string>
@@ -54,7 +51,6 @@
     <!-- Status labels -->
     <string name="status_todo">To-do</string>
     <string name="status_done">Done</string>
-    <string name="status_hold">On hold</string>
 
     <!-- Task edit (SCR-04) -->
     <string name="add_task">Add task</string>
@@ -73,8 +69,6 @@
     <string name="child_tasks">Child tasks</string>
     <string name="comments">Comments</string>
     <string name="add_comment">Add comment</string>
-    <string name="mark_todo">Mark to-do</string>
-    <string name="mark_done">Mark done</string>
     <string name="due_date">Due date</string>
     <string name="completed_at">Completed at</string>
     <string name="created_at">Created at</string>
@@ -220,7 +214,7 @@
     <string name="yaml_err_order_not_integer">order must be a whole number: %1$s</string>
     <string name="yaml_err_order_negative">order must be 0 or greater: %1$s</string>
     <string name="yaml_err_invalid_progress_mode">progress_mode must be count, weight or both: %1$s</string>
-    <string name="yaml_err_invalid_status">status must be todo, done or hold: %1$s</string>
+    <string name="yaml_err_invalid_status">status must be todo or done: %1$s</string>
     <string name="yaml_err_weight_not_number">weight must be a number: %1$s</string>
     <string name="yaml_err_weight_out_of_range">weight must be a number from 0 to 9999: %1$s</string>
     <string name="yaml_err_invalid_planned_month">planned_month must be in YYYY-MM format: %1$s</string>
@@ -263,4 +257,7 @@
     <string name="seed_overall_test">Overall test</string>
     <string name="seed_closeout">Close-out</string>
     <string name="seed_report">Report</string>
+    <!-- Task tree: completion date toggle -->
+    <string name="show_completion_date">Done date</string>
+    <string name="completed_on_fmt">Done %1$s</string>
 </resources>

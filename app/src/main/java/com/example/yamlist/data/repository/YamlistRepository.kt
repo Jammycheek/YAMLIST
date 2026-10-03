@@ -2,6 +2,7 @@ package com.example.yamlist.data.repository
 
 import com.example.yamlist.data.local.YamlistDatabase
 import com.example.yamlist.data.local.withTransactionCompat
+import com.example.yamlist.data.local.entity.AppSettingEntity
 import com.example.yamlist.data.local.entity.ProjectGroupEntity
 import com.example.yamlist.data.local.entity.TaskCommentEntity
 import com.example.yamlist.data.local.entity.TaskEntity
@@ -13,6 +14,7 @@ import com.example.yamlist.domain.model.TaskStatus
 import com.example.yamlist.domain.progress.SiblingReorder
 import com.example.yamlist.domain.progress.TaskOrdering
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import java.time.LocalDateTime
 import java.util.UUID
@@ -276,13 +278,6 @@ class YamlistRepository @Inject constructor(
         taskDao.update(updated)
     }
 
-    suspend fun setStatus(taskId: Long, status: TaskStatus) {
-        val e = taskDao.getById(taskId) ?: return
-        val nowTs = now()
-        val completedAt = if (status == TaskStatus.DONE) nowTs else null
-        taskDao.update(e.copy(status = status.name, completedAt = completedAt, updatedAt = nowTs))
-    }
-
     /** Bulk status for a parent's whole subtree (spec §7.4 long-press actions). */
     suspend fun setSubtreeStatus(projectId: Long, rootId: Long, status: TaskStatus) {
         db.withTransactionCompat {
@@ -376,6 +371,8 @@ class YamlistRepository @Inject constructor(
 
     suspend fun moveTask(taskId: Long, newOrder: Long) = taskDao.setOrder(taskId, newOrder, now())
 
+    suspend fun normalizeLegacyTaskStatus(): Int = taskDao.normalizeLegacyStatus()
+
     suspend fun setTaskColor(taskId: Long, colorKey: String?) =
         taskDao.setColor(taskId, colorKey, now())
 
@@ -411,6 +408,15 @@ class YamlistRepository @Inject constructor(
             .mapValues { (_, list) -> list.filterNot { it.struck }.map { it.body } }
             .filterValues { it.isNotEmpty() }
 
+    // ---- Display settings ------------------------------------------------------
+
+    /** Whether done tasks show their completion date in the tree. Off until switched on. */
+    fun observeShowCompletionDate(): Flow<Boolean> =
+        settingDao.observeValue(SETTING_SHOW_COMPLETION_DATE).map { it == "true" }.distinctUntilChanged()
+
+    suspend fun setShowCompletionDate(show: Boolean) =
+        settingDao.put(AppSettingEntity(SETTING_SHOW_COMPLETION_DATE, show.toString()))
+
     /** Task id -> live comment count, for the tree's "has comments" mark. */
     fun observeCommentCounts(): Flow<Map<Long, Int>> =
         commentDao.observeCommentCounts().map { rows -> rows.associate { it.taskId to it.count } }
@@ -419,6 +425,10 @@ class YamlistRepository @Inject constructor(
 
     fun observeCompletedHistory(): Flow<List<Task>> =
         taskDao.observeCompletedHistory().map { list -> list.map { it.toDomain() } }
+
+    private companion object {
+        const val SETTING_SHOW_COMPLETION_DATE = "show_completion_date"
+    }
 
     // ---- Transaction helper --------------------------------------------------
 

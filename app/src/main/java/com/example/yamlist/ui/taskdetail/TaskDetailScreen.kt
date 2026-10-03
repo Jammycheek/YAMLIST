@@ -93,21 +93,8 @@ fun TaskDetailScreen(
             FieldRow(stringResource(R.string.updated_at), task.updatedAt.format(dateTimeFmt))
 
             HorizontalDivider()
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                if (ui.children.isEmpty()) {
-                    Button(onClick = { viewModel.toggleDone() }) {
-                        Text(
-                            if (task.status == TaskStatus.DONE) stringResource(R.string.mark_todo)
-                            else stringResource(R.string.mark_done)
-                        )
-                    }
-                    OutlinedButton(onClick = { viewModel.setHold() }) {
-                        Text(stringResource(R.string.status_hold))
-                    }
-                }
-                OutlinedButton(onClick = { onEdit(task.projectId, task.id) }) {
-                    Text(stringResource(R.string.edit))
-                }
+            OutlinedButton(onClick = { onEdit(task.projectId, task.id) }) {
+                Text(stringResource(R.string.edit))
             }
             OutlinedButton(onClick = { onBulkAddChild(task.id) }) {
                 Text(stringResource(R.string.bulk_add_children))
@@ -199,7 +186,6 @@ private fun FieldRow(label: String, value: String) {
 private fun statusLabel(s: TaskStatus): String = when (s) {
     TaskStatus.TODO -> stringResource(R.string.status_todo)
     TaskStatus.DONE -> stringResource(R.string.status_done)
-    TaskStatus.HOLD -> stringResource(R.string.status_hold)
 }
 
 

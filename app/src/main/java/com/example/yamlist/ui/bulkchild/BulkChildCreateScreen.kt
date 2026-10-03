@@ -130,7 +130,6 @@ fun BulkChildCreateScreen(
                                 when (status) {
                                     TaskStatus.TODO -> stringResource(R.string.status_todo)
                                     TaskStatus.DONE -> stringResource(R.string.status_done)
-                                    TaskStatus.HOLD -> stringResource(R.string.status_hold)
                                 }
                             )
                         },

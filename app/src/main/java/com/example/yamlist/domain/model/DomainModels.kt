@@ -7,7 +7,7 @@ import java.time.LocalDateTime
  * Task lifecycle status (spec §9).
  * Stored as the enum name in the DB / YAML.
  */
-enum class TaskStatus { TODO, DONE, HOLD }
+enum class TaskStatus { TODO, DONE }
 
 /**
  * How a project's progress is presented (spec §6.1 progressMode).

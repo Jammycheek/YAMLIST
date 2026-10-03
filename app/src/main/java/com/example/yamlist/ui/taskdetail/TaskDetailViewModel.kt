@@ -7,7 +7,6 @@ import com.example.yamlist.R
 import com.example.yamlist.data.local.entity.TaskCommentEntity
 import com.example.yamlist.data.repository.YamlistRepository
 import com.example.yamlist.domain.model.Task
-import com.example.yamlist.domain.model.TaskStatus
 import com.example.yamlist.ui.common.UiText
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -57,8 +56,6 @@ class TaskDetailViewModel @Inject constructor(
             )
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), TaskDetailUi())
 
-    fun toggleDone() = viewModelScope.launch { repo.toggleDone(taskId) }
-    fun setHold() = viewModelScope.launch { repo.setStatus(taskId, TaskStatus.HOLD) }
     fun addComment(body: String) = viewModelScope.launch {
         if (body.isNotBlank()) repo.addComment(taskId, body.trim())
     }
