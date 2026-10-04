@@ -96,15 +96,15 @@ class ProgressCalculatorTest {
     }
 
     @Test
-    fun `hold is in denominator but never numerator`() {
+    fun `unfinished task is in denominator but never numerator`() {
         val p = progressOf(
             listOf(
-                task(1, weight = 1.0, status = TaskStatus.HOLD),
+                task(1, weight = 1.0, status = TaskStatus.TODO),
                 task(2, weight = 1.0, status = TaskStatus.DONE),
             )
         )
         assertEquals(2, p.countTotal)
-        assertEquals(1, p.countDone)             // HOLD not counted done
+        assertEquals(1, p.countDone)             // TODO not counted done
         assertEquals(50, p.countPercent)
     }
 

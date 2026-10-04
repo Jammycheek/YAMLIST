@@ -9,14 +9,12 @@
     <string name="edit">編集</string>
     <string name="delete">削除</string>
     <string name="archive">アーカイブ</string>
-    <string name="copy">コピー</string>
     <string name="menu">メニュー</string>
 
     <!-- Top-level menu / navigation -->
     <string name="yaml_io">YAML入出力</string>
     <string name="history">完了履歴</string>
     <string name="backup_restore">バックアップ／復元</string>
-    <string name="settings">設定</string>
 
     <!-- Project list (SCR-01) -->
     <string name="new_project">新規プロジェクト</string>
@@ -42,7 +40,6 @@
     <string name="add_child_task">子タスク追加</string>
     <string name="mark_all_done">すべて完了</string>
     <string name="mark_all_todo">すべて未完了</string>
-    <string name="mark_all_hold">すべて保留</string>
     <string name="delete_with_children_fmt">このタスクと配下 %1$d 件を削除しますか？</string>
     <string name="depth_warning">階層が深くなっています。見やすさのため整理を検討してください。</string>
     <string name="expand_collapse">展開／折りたたみ</string>
@@ -54,7 +51,6 @@
     <!-- Status labels -->
     <string name="status_todo">未完了</string>
     <string name="status_done">完了</string>
-    <string name="status_hold">保留</string>
 
     <!-- Task edit (SCR-04) -->
     <string name="add_task">タスク追加</string>
@@ -73,8 +69,6 @@
     <string name="child_tasks">子タスク</string>
     <string name="comments">コメント</string>
     <string name="add_comment">コメント追加</string>
-    <string name="mark_todo">未完了にする</string>
-    <string name="mark_done">完了にする</string>
     <string name="due_date">期限</string>
     <string name="completed_at">完了日時</string>
     <string name="created_at">作成日時</string>
@@ -220,7 +214,7 @@
     <string name="yaml_err_order_not_integer">order は整数である必要があります: %1$s</string>
     <string name="yaml_err_order_negative">order には0以上の整数を指定してください: %1$s</string>
     <string name="yaml_err_invalid_progress_mode">progress_mode は count/weight/both のいずれかです: %1$s</string>
-    <string name="yaml_err_invalid_status">status は todo/done/hold のいずれかです: %1$s</string>
+    <string name="yaml_err_invalid_status">status は todo/done のいずれかです: %1$s</string>
     <string name="yaml_err_weight_not_number">weight は数値である必要があります: %1$s</string>
     <string name="yaml_err_weight_out_of_range">weight には0以上9999以下の数値を指定してください: %1$s</string>
     <string name="yaml_err_invalid_planned_month">planned_month は YYYY-MM 形式です: %1$s</string>
@@ -263,4 +257,7 @@
     <string name="seed_overall_test">総合試験</string>
     <string name="seed_closeout">完了処理</string>
     <string name="seed_report">報告書作成</string>
+    <!-- Task tree: completion date toggle -->
+    <string name="show_completion_date">完了日</string>
+    <string name="completed_on_fmt">完了 %1$s</string>
 </resources>

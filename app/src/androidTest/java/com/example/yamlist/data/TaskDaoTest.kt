@@ -123,6 +123,21 @@ class TaskDaoTest {
     }
 
     @Test
+    fun normalizeLegacyStatus_turnsRemovedHoldIntoTodoAndKeepsDone() = runBlocking {
+        val projectId = db.projectDao().insert(project())
+        val held = db.taskDao().insert(task("held", projectId, null).copy(status = "HOLD"))
+        val done = db.taskDao().insert(task("done", projectId, null).copy(status = "DONE"))
+        val todo = db.taskDao().insert(task("todo", projectId, null))
+
+        assertEquals(1, db.taskDao().normalizeLegacyStatus())
+
+        assertEquals("TODO", db.taskDao().getById(held)!!.status)
+        assertEquals("DONE", db.taskDao().getById(done)!!.status)
+        assertEquals("TODO", db.taskDao().getById(todo)!!.status)
+        assertEquals(0, db.taskDao().normalizeLegacyStatus())
+    }
+
+    @Test
     fun nestedExcludedBranchUpdatesItsIntermediateCheckboxState() = runBlocking {
         val projectId = db.projectDao().insert(project())
         val root = db.taskDao().insert(task("root", projectId, null))

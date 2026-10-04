@@ -48,6 +48,7 @@ data class TaskTreeUiState(
     val rows: List<TreeRow> = emptyList(),
     val overall: ProgressResult = ProgressResult.EMPTY,
     val depthWarning: Boolean = false,       // spec §7.2: 6+ levels
+    val showCompletionDate: Boolean = false,
 )
 
 @HiltViewModel
@@ -74,7 +75,8 @@ class TaskTreeViewModel @Inject constructor(
             repo.observeTasks(projectId),
             collapsed,
             repo.observeCommentCounts(),
-        ) { project, tasks, collapsedIds, commentCounts ->
+            repo.observeShowCompletionDate(),
+        ) { project, tasks, collapsedIds, commentCounts, showCompletionDate ->
             val forest = TaskTreeBuilder.build(tasks)
             currentForest = forest
             val overall = ProgressCalculator.forForest(forest)
@@ -84,6 +86,7 @@ class TaskTreeViewModel @Inject constructor(
                 rows = rows,
                 overall = overall,
                 depthWarning = TaskTreeBuilder.maxDepth(forest) >= 6,
+                showCompletionDate = showCompletionDate,
             )
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), TaskTreeUiState())
 
@@ -177,6 +180,10 @@ class TaskTreeViewModel @Inject constructor(
     }
 
     fun toggleDone(taskId: Long) = viewModelScope.launch { repo.toggleDone(taskId) }
+
+    fun toggleCompletionDate() = viewModelScope.launch {
+        repo.setShowCompletionDate(!uiState.value.showCompletionDate)
+    }
 
     fun setColor(taskId: Long, colorKey: String?) =
         viewModelScope.launch { repo.setTaskColor(taskId, colorKey) }

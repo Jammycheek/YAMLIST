@@ -279,4 +279,28 @@ class YamlCommentsTest {
         val parsed = (YamlImporter.parse(yaml) as YamlParseResult.Success).project.tasks.single()
         assertEquals(0.0, parsed.weight, 0.0)
     }
+
+    @Test
+    fun `legacy hold status is read as todo`() {
+        val t = parseSingleTask(
+            """
+            - title: A
+              status: hold
+            """
+        )
+        assertEquals(com.example.yamlist.domain.model.TaskStatus.TODO, t.status)
+    }
+
+    @Test
+    fun `unknown status is still rejected`() {
+        val r = YamlImporter.parse(
+            yamlWithTask(
+                """
+                - title: A
+                  status: sideways
+                """
+            )
+        )
+        assertTrue((r as YamlParseResult.Failure).errors.any { it.kind == YamlErrorKind.INVALID_STATUS })
+    }
 }

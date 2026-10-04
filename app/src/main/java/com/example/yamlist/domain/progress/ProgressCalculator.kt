@@ -13,7 +13,7 @@ import java.math.RoundingMode
  *  - Only leaf tasks that are progress targets count (spec §8.1).
  *  - Parent tasks never contribute their own weight/count (no double counting).
  *  - weight <= 0 targets are excluded from BOTH numerator and denominator (§8.4).
- *  - HOLD tasks are in the denominator but never the numerator (§8.6).
+ *  - Tasks that are not DONE are in the denominator but never the numerator (§8.6).
  *  - Non-target and deleted tasks are excluded (§8.1). Deletion is handled upstream
  *    by [TaskTreeBuilder]; this engine additionally skips non-targets.
  */

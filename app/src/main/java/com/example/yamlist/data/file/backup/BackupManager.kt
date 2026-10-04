@@ -44,7 +44,7 @@ class BackupManager @Inject constructor(
 
     companion object {
         const val BACKUP_FORMAT_VERSION = 1
-        const val APP_VERSION = "0.7"
+        const val APP_VERSION = "0.8"
         const val FILE_MANIFEST = "manifest.json"
         const val FILE_PROJECTS = "projects.yaml"
         const val FILE_COMMENTS = "comments.json"
@@ -328,7 +328,8 @@ class BackupManager @Inject constructor(
             projectId = (m["projectId"] as Number).toLong(),
             parentTaskId = (m["parentTaskId"] as? Number)?.toLong(),
             title = m["title"] as String,
-            status = (m["status"] as? String) ?: "TODO",
+            // Archives from before the on-hold status was removed may say "HOLD".
+            status = if ((m["status"] as? String)?.equals("DONE", ignoreCase = true) == true) "DONE" else "TODO",
             weight = (m["weight"] as? Number)?.toDouble() ?: 1.0,
             markType = m["markType"] as? String,
             colorCode = m["colorCode"] as? String,
